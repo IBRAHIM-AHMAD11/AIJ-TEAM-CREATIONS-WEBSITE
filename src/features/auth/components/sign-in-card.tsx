@@ -4,12 +4,23 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { FcGoogle }  from "react-icons/fc"
 import { FaFacebook } from "react-icons/fa";
+import { SignInFlow } from "../types";
+import { useState } from "react";
 
-export const SignInCard = () => {
+interface SignInCardProps {
+   setState: (state: SignInFlow) => void;
+}
+
+export const SignInCard = ({ setState }: SignInCardProps) => {
+
+   const [email, setEmail] = useState("");
+   const [password, setPassword] = useState("");
+
    return (
       <Card className="w-full h-full p-8">
          <CardHeader className="px-0 pt-0">
-            <CardTitle className="text-2xl font-semibold text-[#0089d0]">
+            {/* text-[#0089d0] */}
+            <CardTitle className="text-2xl font-semibold text-black">
                Login to continue
             </CardTitle>
             <CardDescription>
@@ -18,8 +29,8 @@ export const SignInCard = () => {
          </CardHeader>
          <CardContent className="space-y-5 px-0 pb-0">
             <form className="space-y-2.5">
-               <Input disabled={false} value="" onChange={() => {}} placeholder="Email" type="email" required />
-               <Input disabled={false} value="" onChange={() => {}} placeholder="Password" type="password" required />
+               <Input disabled={false} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required />
+               <Input disabled={false} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" required />
                <Button type="submit" className="w-full rounded-[7px]" size="lg" disabled={false}>
                   Continue
                </Button>
@@ -37,8 +48,8 @@ export const SignInCard = () => {
                   Continue with Facebook
                </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-               Don&apos;t have an account? <span className="text-orange-400 hover:underline cursor-pointer"
+            <p className="text-sm text-center text-muted-foreground">
+               Don&apos;t have an account? <span onClick={() => setState("signUp")} className="text-orange-400 hover:underline cursor-pointer"
                >Sign Up</span>
             </p>
          </CardContent>

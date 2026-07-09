@@ -12,7 +12,7 @@ export const AuthScreen = () => {
    return (
       <div className="min-h-full flex items-center justify-center bg-[#faca61]">
          <div className="md:h-auto md:w-105">
-            {state === "signIn" ? <SignInCard /> : <SignUpCard />}
+            {state === "signIn" ? <SignInCard setState={setState} /> : <SignUpCard setState={setState} />}
          </div>
       </div>
    );
