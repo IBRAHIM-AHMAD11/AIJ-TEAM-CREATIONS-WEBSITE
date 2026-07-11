@@ -57,20 +57,20 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
          )}
          <CardContent className="space-y-5 px-0 pb-0">
             <form onSubmit={onPasswordSignIn} className="space-y-2.5">
-               <Input disabled={false} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required />
+               <Input disabled={pending} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required />
                <Input disabled={false} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" required />
-               <Button type="submit" className="w-full rounded-[7px]" size="lg" disabled={false}>
+               <Button type="submit" className="w-full rounded-[7px]" size="lg" disabled={pending}>
                   Continue
                </Button>
             </form>
             <Separator />
             <div className="flex flex-col gap-y-2.5">
-               <Button disabled={false} className="w-full relative" variant="outline" size="lg" onClick={() => {handleProviderSignIn("google")}}
+               <Button disabled={pending} className="w-full relative" variant="outline" size="lg" onClick={() => {handleProviderSignIn("google")}}
                >
                   <FcGoogle className="size-5 absolute left-2.5 top-3" />
                   Continue with Google
                </Button>
-               <Button disabled={false} className="w-full relative" variant="outline" size="lg" onClick={() => {handleProviderSignIn("facebook")}}
+               <Button disabled={pending} className="w-full relative" variant="outline" size="lg" onClick={() => {handleProviderSignIn("facebook")}}
                >
                   <FaFacebook className="size-5 absolute left-2.5 top-3" />
                   Continue with Facebook

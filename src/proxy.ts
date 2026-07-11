@@ -11,6 +11,10 @@ export async function proxy(request: any, event: any) {
     if (!isPublicPage(req) && !(await convexAuth.isAuthenticated())) {
       return nextjsMiddlewareRedirect(req, "/auth");
     }
+    if (isPublicPage(req) && (await convexAuth.isAuthenticated())) {
+      return nextjsMiddlewareRedirect(req, "/");
+    }
+    
   })(request, event);
 }
 
