@@ -5,9 +5,9 @@ import { Separator } from "@/components/ui/separator";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
 import { SignInFlow } from "../types";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { TriangleAlert } from "lucide-react";
+import { Camera, TriangleAlert } from "lucide-react";
 import passwordValidator from "../password_validator";
 
 interface SignUpCardProps {
@@ -22,6 +22,24 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
    const [confirmPassword, setConfirmPassword] = useState("");
    const [pending, setPending] = useState(false);
    const [name, setName] = useState("");
+   const [image, setImage] = useState<string | undefined>(undefined);
+   const [imagePreview, setImagePreview] = useState<string | null>(null);
+   const fileInputRef = useRef<HTMLInputElement>(null);
+
+   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+         // Create local URL for immediate DOM UI rendering preview
+         setImagePreview(URL.createObjectURL(file));
+
+         // Convert file to a string payload for database insertion
+         const reader = new FileReader();
+         reader.onloadend = () => {
+            setImage(reader.result as string);
+         };
+         reader.readAsDataURL(file);
+      }
+   };
 
    // Calculate password metrics in real-time as the user types
    const { success: isPasswordSecure, securityLevel } = passwordValidator(password);
@@ -50,7 +68,7 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
    }
 
    setPending(true);
-   signIn("password", { name, email, password, flow: "signUp" })
+   signIn("password", { name, email, password, flow: "signUp" ,...(image ? { image } : {}) })
       .catch((err: unknown) => {
          // 1. Cast or verify the error is an Error object
          if (err instanceof Error) {
@@ -97,6 +115,44 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
          
          <CardContent className="space-y-5 px-0 pb-0">
             <form onSubmit={onPasswordSignUp} className="space-y-2.5">
+
+               {/* --- START IMAGE SELECTOR CIRCLE --- */}
+               <div className="flex flex-col items-center justify-center pb-4">
+                  <input 
+                     type="file" 
+                     accept="image/*" 
+                     className="hidden" 
+                     ref={fileInputRef} 
+                     onChange={handleImageChange}
+                     disabled={pending}
+                  />
+                  <div 
+                     onClick={() => fileInputRef.current?.click()}
+                     className="group relative size-24 rounded-full border border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition hover:border-orange-400 hover:bg-gray-100"
+                  >
+                     {imagePreview ? (
+                        <img 
+                           src={imagePreview} 
+                           alt="Profile preview" 
+                           className="size-full object-cover"
+                        />
+                     ) : (
+                        <div className="flex flex-col items-center text-muted-foreground group-hover:text-orange-400">
+                           <Camera className="size-5 mb-1" />
+                           <span className="text-[10px] font-medium">Avatar</span>
+                        </div>
+                     )}
+                     
+                     {/* Overlay effect on hover when image is present */}
+                     {imagePreview && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
+                           <Camera className="size-5 text-white" />
+                        </div>
+                     )}
+                  </div>
+               </div>
+               {/* --- END IMAGE SELECTOR CIRCLE --- */}
+
                <Input disabled={pending} value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name" required />
                <Input disabled={pending} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required />
                <Input disabled={pending} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" required />
