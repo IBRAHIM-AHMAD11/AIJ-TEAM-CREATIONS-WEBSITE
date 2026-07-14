@@ -1,13 +1,9 @@
-"use client"
+import React from 'react'
 
-import { UserButton } from "@/features/auth/components/user-avatar"
-
-const Home = () => {
+const LandingPage = () => {
   return (
-    <div>
-      <UserButton />
-    </div>
+    <div>LandingPage</div>
   )
 }
 
-export default Home
+export default LandingPage

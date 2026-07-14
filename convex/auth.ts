@@ -9,10 +9,20 @@ const customPassword = Password<DataModel>({
       email: params.email as string,
       name: params.name as string,
       image: (params.image as string) || undefined,
+      role: "customer", // Default role for new users
     };
   },
 });
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [customPassword, Password, Google],
+  providers: [customPassword, Google({
+    profile(profile) {
+      return {
+        id: profile.sub,
+        email: profile.email,
+        name: profile.name,
+        image: profile.picture, // Default role for new users
+      };
+    }
+  })],
 });

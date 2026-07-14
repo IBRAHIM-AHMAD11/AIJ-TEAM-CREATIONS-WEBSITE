@@ -2,6 +2,7 @@ import { convexAuthNextjsMiddleware, createRouteMatcher, nextjsMiddlewareRedirec
 
 const isPublicPage = createRouteMatcher([
   "/auth",
+  "/"
 ]);
 
 // Next.js 16 expects a named export function called 'proxy'
@@ -12,7 +13,7 @@ export async function proxy(request: any, event: any) {
       return nextjsMiddlewareRedirect(req, "/auth");
     }
     if (isPublicPage(req) && (await convexAuth.isAuthenticated())) {
-      return nextjsMiddlewareRedirect(req, "/");
+      return nextjsMiddlewareRedirect(req, "/store");
     }
     
   })(request, event);
