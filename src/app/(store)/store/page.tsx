@@ -1,9 +1,7 @@
 "use client"
 
-import { UserButton } from "@/features/auth/components/user-avatar"
-
-import { useGetProducts } from "@/features/store/api/use-get-products";
-import ProductGrid from "@/features/store/page";
+import ProductGrid from "@/app/(store)/store/productGrid";
+import { useGetProducts } from "../../../../convex/use-get-products";
 
 const Home = () => {
 
@@ -11,7 +9,6 @@ const Home = () => {
 
   return (
     <div>
-      <UserButton />
       <ProductGrid products={data} isLoading={isLoading} />
     </div>
   )

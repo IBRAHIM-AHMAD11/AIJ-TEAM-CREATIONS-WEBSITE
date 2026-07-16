@@ -10,8 +10,7 @@ import {
   Trash2, 
   Package, 
   TrendingUp, 
-  Layers, 
-  ExternalLink,
+  Layers,
   Loader2
 } from "lucide-react";
 
@@ -87,7 +86,7 @@ export default function AdminPage() {
             Monitor inventory values, adjust catalog products, and track real-time listings on your storefront.
           </p>
         </div>
-        <Button aschild="true" className="shadow-sm">
+        <Button className="shadow-sm">
           <Link href="/admin/products/new" className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add Product
@@ -156,7 +155,7 @@ export default function AdminPage() {
               <Package className="h-10 w-10 text-slate-300 mb-3" />
               <h3 className="text-sm font-bold text-slate-900">No products added yet</h3>
               <p className="text-xs text-slate-400 mt-1 max-w-xs">Get started by creating your very first catalog product.</p>
-              <Button aschild="true" size="sm" className="mt-4">
+              <Button size="sm" className="mt-4">
                 <Link href="/admin/products/new">Create Product</Link>
               </Button>
             </div>

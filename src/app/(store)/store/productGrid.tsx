@@ -1,4 +1,6 @@
-import { Doc } from "../../../convex/_generated/dataModel"
+import { Doc } from "../../../../convex/_generated/dataModel"
+import { useAtomValue } from "jotai";
+import { selectedCategoriesAtom, stockOnlyAtom } from "./atoms";
 
 // 1. Define the props interface using Convex's document generator type
 interface ProductGridProps {
@@ -8,6 +10,23 @@ interface ProductGridProps {
 
 // 2. Accept the props directly in the component signature
 export default function ProductGrid({ products, isLoading }: ProductGridProps) {
+
+  const selectedCategories = useAtomValue(selectedCategoriesAtom);
+  const stockOnly = useAtomValue(stockOnlyAtom);
+
+  // 2. Force an explicit fallback array right away
+  const allProducts = products ?? [];
+
+  // 3. Filter the safe local array
+  const filteredProducts = allProducts.filter((product) => {
+    const matchesCategory =
+      selectedCategories.length === 0 ||
+      selectedCategories.includes(product.categoryId);
+
+    const matchesStock = !stockOnly || product.inventoryCount > 0;
+
+    return matchesCategory && matchesStock;
+  });
 
   // 3. Handle the loading state gracefully
   if (isLoading) {
@@ -21,11 +40,11 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
   }
 
   // 4. Handle empty state if no products match the query
-  if (!products || products.length === 0) {
+  if (filteredProducts.length === 0) {
     return (
       <div className="text-center py-12">
         <h3 className="text-lg font-medium text-gray-900">No products found</h3>
-        <p className="text-gray-500">Check back later or add items via the dashboard.</p>
+        <p className="text-gray-500">Try adjusting your filters or search options.</p>
       </div>
     );
   }
@@ -36,7 +55,8 @@ export default function ProductGrid({ products, isLoading }: ProductGridProps) {
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Our Products</h2>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products.map((product) => (
+        {/* Fixed: We now map over filteredProducts instead of products */}
+        {filteredProducts.map((product) => (
           <div 
             key={product._id} 
             className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white flex flex-col justify-between"
