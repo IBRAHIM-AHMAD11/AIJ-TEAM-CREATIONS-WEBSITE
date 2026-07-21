@@ -23,6 +23,20 @@ export const createProduct = mutation({
     images: v.array(v.string()),
     isActive: v.boolean(),
     video: v.optional(v.string()),
+    features: v.optional(
+      v.array(
+        v.object({
+          type: v.union(
+            v.literal("color"),
+            v.literal("size"),
+            v.literal("material"),
+            v.literal("custom")
+          ),
+          label: v.string(),
+          value: v.string(),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("products", {
@@ -66,5 +80,15 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("products").order("desc").collect();
+  },
+});
+
+export const getBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("products")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique(); // Returns the product or null if not found
   },
 });

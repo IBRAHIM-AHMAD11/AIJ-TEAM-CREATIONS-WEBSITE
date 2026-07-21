@@ -30,7 +30,27 @@ const schema = defineSchema({
     images: v.array(v.string()), 
     isActive: v.boolean(), 
     createdAt: v.number(),
-    video: v.optional(v.string()), 
+    video: v.optional(v.string()),
+    features: v.optional(
+      v.array(
+        v.union(
+          v.object({
+            type: v.union(
+              v.literal("color"),
+              v.literal("size"),
+              v.literal("material"),
+              v.literal("custom")
+            ),
+            label: v.string(),
+            value: v.string(),
+          }),
+          v.object({
+            color: v.string(),
+            featureType: v.string(),
+          })
+        )
+      )
+    ),
   })
     .index("by_slug", ["slug"])
     .index("by_category", ["categoryId"])

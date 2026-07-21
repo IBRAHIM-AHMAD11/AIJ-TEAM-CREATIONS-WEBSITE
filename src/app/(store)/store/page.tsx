@@ -1,7 +1,7 @@
 "use client"
 
 import ProductGrid from "@/app/(store)/store/productGrid";
-import { useGetProducts } from "../../../../convex/use-get-products";
+import { useGetProducts } from "../../../../convex/useGetProducts";
 
 const Home = () => {
 

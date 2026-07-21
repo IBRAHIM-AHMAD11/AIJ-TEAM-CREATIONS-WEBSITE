@@ -1,6 +1,6 @@
-import * as React from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
+
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
@@ -18,7 +18,6 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
-        transparent: "bg-transparent hover:bg-accent/10 text-accent"
       },
       size: {
         default:
@@ -32,7 +31,6 @@ const buttonVariants = cva(
         "icon-sm":
           "size-8 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-md",
         "icon-lg": "size-10",
-        iconSm: "h-8 w-8"
       },
     },
     defaultVariants: {
@@ -42,24 +40,16 @@ const buttonVariants = cva(
   }
 )
 
-// Extend base ButtonPrimitive props to include CVA variants naturally
-export interface ButtonProps
-  extends ButtonPrimitive.Props,
-    VariantProps<typeof buttonVariants> {}
-
 function Button({
   className,
   variant = "default",
   size = "default",
-  render,
   ...props
-}: ButtonProps) {
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
-      // Combine base button classes, custom classes, and CVA configuration
       className={cn(buttonVariants({ variant, size, className }))}
-      render={render}
       {...props}
     />
   )

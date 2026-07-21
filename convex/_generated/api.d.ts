@@ -13,6 +13,7 @@ import type * as categories from "../categories.js";
 import type * as http from "../http.js";
 import type * as products from "../products.js";
 import type * as upload from "../upload.js";
+import type * as useGetProducts from "../useGetProducts.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   products: typeof products;
   upload: typeof upload;
+  useGetProducts: typeof useGetProducts;
   users: typeof users;
   utils: typeof utils;
 }>;
