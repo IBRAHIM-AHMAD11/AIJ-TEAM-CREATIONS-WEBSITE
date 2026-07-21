@@ -30,10 +30,13 @@ export const createProduct = mutation({
             v.literal("color"),
             v.literal("size"),
             v.literal("material"),
+            v.literal("dimension"),
+            v.literal("finish"),
             v.literal("custom")
           ),
           label: v.string(),
           value: v.string(),
+          priceAdjustment: v.optional(v.number()),
         })
       )
     ),
@@ -46,6 +49,12 @@ export const createProduct = mutation({
   }
 })
 
+const extractStorageId = (url: string): string | null => {
+  if (!url.includes("api/storage/")) return null;
+  const id = url.split("api/storage/")[1]?.split("?")[0];
+  return id ?? null;
+};
+
 export const deleteProduct = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
@@ -54,19 +63,28 @@ export const deleteProduct = mutation({
       throw new Error("Product not found");
     }
 
-    // Optional: If you want to clean up uploaded images from Convex Storage to save space:
+    // Clean up images from Convex Storage
     if (product.images && product.images.length > 0) {
       for (const imageUrl of product.images) {
-        // Extract the storageId from the URL if it's hosted on Convex
-        if (imageUrl.includes("api/storage/")) {
-          const storageId = imageUrl.split("api/storage/")[1];
-          if (storageId) {
-            try {
-              await ctx.storage.delete(storageId as any);
-            } catch (err) {
-              console.error("Failed to delete orphaned storage asset:", err);
-            }
+        const storageId = extractStorageId(imageUrl);
+        if (storageId) {
+          try {
+            await ctx.storage.delete(storageId as any);
+          } catch (err) {
+            console.error("Failed to delete image storage asset:", err);
           }
+        }
+      }
+    }
+
+    // Clean up video if it's stored on Convex
+    if (product.video) {
+      const storageId = extractStorageId(product.video);
+      if (storageId) {
+        try {
+          await ctx.storage.delete(storageId as any);
+        } catch (err) {
+          console.error("Failed to delete video storage asset:", err);
         }
       }
     }

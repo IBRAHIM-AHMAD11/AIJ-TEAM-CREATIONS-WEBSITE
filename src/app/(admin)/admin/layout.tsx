@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api"
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Toaster } from "sonner";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = useQuery(api.users.getCurrentUser); // Make sure this query returns your user document
@@ -47,6 +48,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Navigation links go here */}
       </aside>
       <main className="flex-1 p-10">{children}</main>
+      <Toaster richColors position="top-right" />
     </div>
   );
 }

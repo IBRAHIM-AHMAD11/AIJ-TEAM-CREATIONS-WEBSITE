@@ -9,10 +9,13 @@ import { toast } from "sonner";
 // Components
 import { FeatureSelectionModal } from "../../FeatureSelectionModal";
 
+type FeatureType = "color" | "size" | "material" | "dimension" | "finish" | "custom";
+
 interface ProductFeature {
-  type: "color" | "size" | "material" | "custom";
+  type: FeatureType;
   label: string;
   value: string;
+  priceAdjustment?: number;
 }
 
 export default function NewProductPage() {
@@ -32,7 +35,8 @@ export default function NewProductPage() {
   const [priceInput, setPriceInput] = useState("");
   const [inventoryCount, setInventoryCount] = useState(0);
   const [categoryId, setCategoryId] = useState("");
-  const [uploadedImageUrl, setUploadedImageUrl] = useState("");
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [videoUrl, setVideoUrl] = useState("");
 
   // Feature State
   const [features, setFeatures] = useState<ProductFeature[]>([]);
@@ -41,10 +45,13 @@ export default function NewProductPage() {
   // UI States
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [uploadedVideoUrl, setUploadedVideoUrl] = useState("");
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   const convertToSlug = (text: string) => {
     return text
@@ -81,13 +88,51 @@ export default function NewProductPage() {
 
       const imageUrl = await getImageUrl({ storageId });
       if (imageUrl) {
-        setUploadedImageUrl(imageUrl);
+        setUploadedImages((prev) => [...prev, imageUrl]);
       }
+      toast.success("Image added");
     } catch (err) {
       toast.error("Failed to upload image asset.");
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setVideoUploading(true);
+    try {
+      const postUrl = await generateUploadUrl();
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      if (!result.ok) throw new Error("Upload failed");
+      const { storageId } = await result.json();
+
+      const videoUrl = await getImageUrl({ storageId });
+      if (videoUrl) {
+        setUploadedVideoUrl(videoUrl);
+        setVideoUrl(""); // clear URL input when file uploaded
+      }
+      toast.success("Video added");
+    } catch (err) {
+      toast.error("Failed to upload video.");
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
+  const handleRemoveVideo = () => {
+    setUploadedVideoUrl("");
   };
 
   const handleAddCategory = async (e: React.FormEvent) => {
@@ -117,9 +162,25 @@ export default function NewProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryId) return toast.message("Please select or create a category first!");
-    setLoading(true);
 
     const priceInCents = Math.round(parseFloat(priceInput) * 100);
+
+    if (isNaN(priceInCents) || priceInCents <= 0) {
+      return toast.error("Please enter a valid base price.");
+    }
+
+    // Price verifier: ensure no combination can result in a negative price
+    const negativeSum = features
+      .filter((f) => f.priceAdjustment !== undefined && f.priceAdjustment < 0)
+      .reduce((sum, f) => sum + (f.priceAdjustment ?? 0), 0);
+
+    if (priceInCents + negativeSum <= 0) {
+      return toast.error(
+        `Price would go negative with current adjustments. The lowest possible price is $${((priceInCents + negativeSum) / 100).toFixed(2)}. Increase base price or reduce discounts.`
+      );
+    }
+
+    setLoading(true);
 
     try {
       await createProduct({
@@ -129,7 +190,8 @@ export default function NewProductPage() {
         price: priceInCents,
         inventoryCount: Number(inventoryCount),
         categoryId: categoryId as any,
-        images: uploadedImageUrl ? [uploadedImageUrl] : [],
+        images: uploadedImages,
+        video: (uploadedVideoUrl || videoUrl).trim() || undefined,
         features, 
         isActive: true,
       });
@@ -150,7 +212,7 @@ export default function NewProductPage() {
         <p className="text-sm text-gray-500">Configure your listing details, upload product assets, and assign catalog tags.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
         {/* Title */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Product Title</label>
@@ -235,9 +297,29 @@ export default function NewProductPage() {
                   {feature.type === "color" && (
                     <div className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: feature.value }} />
                   )}
+                  {feature.type === "dimension" && (
+                    <span className="text-[10px] font-bold text-gray-400">⤐</span>
+                  )}
+                  {feature.type === "finish" && (
+                    <span className="text-[10px] font-bold text-gray-400">✦</span>
+                  )}
                   <span className="font-medium text-gray-700">
                     <span className="text-gray-400 text-xs mr-1 capitalize">{feature.type}:</span>
-                    {feature.label}
+                    {feature.type === "dimension"
+                      ? (() => {
+                          const parts = feature.value.split("x");
+                          return parts.map(p => `${p}cm`).join(" × ");
+                        })()
+                      : feature.label
+                    }
+                    {feature.type === "dimension" && feature.label !== "Dimensions" && (
+                      <span className="text-gray-400 text-xs ml-1">({feature.label})</span>
+                    )}
+                    {feature.priceAdjustment !== undefined && feature.priceAdjustment !== 0 && (
+                      <span className={`text-xs ml-1 font-semibold ${feature.priceAdjustment > 0 ? "text-amber-600" : "text-green-600"}`}>
+                        {feature.priceAdjustment > 0 ? "+" : ""}${(feature.priceAdjustment / 100).toFixed(2)}
+                      </span>
+                    )}
                   </span>
                   <button type="button" onClick={() => handleRemoveFeature(index)} className="text-gray-400 hover:text-red-500 ml-1 font-bold">×</button>
                 </div>
@@ -273,23 +355,115 @@ export default function NewProductPage() {
           </div>
         </div>
 
-        {/* Image Upload */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Product Image</label>
-          <div 
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
-          >
-            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
-            {uploading ? (
-              <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
-            ) : uploadedImageUrl ? (
-              <div className="flex flex-col items-center space-y-2">
-                <img src={uploadedImageUrl} alt="Preview" className="h-32 w-32 object-cover rounded-md border" />
-                <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+        {/* Media — Images + Video */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Product Images <span className="text-xs text-gray-400 font-normal">(upload one at a time)</span>
+            </label>
+            
+            {/* Image grid */}
+            {uploadedImages.length > 0 && (
+              <div className="flex flex-wrap gap-3 mb-3">
+                {uploadedImages.map((url, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={url}
+                      alt={`Product ${index + 1}`}
+                      className="h-24 w-24 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
+            >
+              <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
+              {uploading ? (
+                <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  {uploadedImages.length === 0 ? "Click to add images" : "Click to add another image"}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Video — upload file OR paste URL (only one) */}
+          <div className="p-4 border rounded-md bg-gray-50">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Product Video <span className="text-xs text-gray-400 font-normal">optional — upload a file or paste a link</span>
+            </label>
+
+            {uploadedVideoUrl ? (
+              <div className="flex items-center gap-3 p-3 bg-white border rounded-md">
+                <span className="text-sm text-green-600 font-medium">✓ Video uploaded</span>
+                <span className="text-xs text-gray-400 truncate flex-1">{uploadedVideoUrl}</span>
+                <button
+                  type="button"
+                  onClick={handleRemoveVideo}
+                  className="text-xs text-red-500 hover:text-red-700 font-semibold"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : videoUrl.trim() ? (
+              <div className="flex items-center gap-3 p-3 bg-white border rounded-md">
+                <span className="text-sm text-blue-600 font-medium">✓ Video link added</span>
+                <span className="text-xs text-gray-400 truncate flex-1">{videoUrl}</span>
+                <button
+                  type="button"
+                  onClick={() => setVideoUrl("")}
+                  className="text-xs text-red-500 hover:text-red-700 font-semibold"
+                >
+                  Remove
+                </button>
               </div>
             ) : (
-              <p className="text-sm text-gray-600">Click to browse your files</p>
+              <div className="space-y-2">
+                <div
+                  onClick={() => videoFileInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
+                >
+                  <input
+                    type="file"
+                    accept="video/*"
+                    ref={videoFileInputRef}
+                    className="hidden"
+                    onChange={handleVideoUpload}
+                  />
+                  {videoUploading ? (
+                    <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
+                  ) : (
+                    <p className="text-sm text-gray-600">Click to upload a video file</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="h-px flex-1 bg-gray-200" />
+                  <span className="text-xs text-gray-400">or</span>
+                  <span className="h-px flex-1 bg-gray-200" />
+                </div>
+                <input
+                  type="url"
+                  value={videoUrl}
+                  onChange={(e) => {
+                    setVideoUrl(e.target.value);
+                    if (uploadedVideoUrl) setUploadedVideoUrl(""); // clear uploaded file when URL entered
+                  }}
+                  placeholder="Paste a video URL (YouTube, Vimeo, MP4...)"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 text-sm"
+                />
+              </div>
             )}
           </div>
         </div>
@@ -327,12 +501,14 @@ export default function NewProductPage() {
         </div>
       )}
 
-      {/* Feature Selection Modal */}
-      <FeatureSelectionModal 
-        isOpen={showFeatureModal}
-        onClose={setShowFeatureModal}
-        onSave={handleAddFeature}
-      />
+      {/* Feature Selection Modal — conditionally rendered so it gets fresh state on open */}
+      {showFeatureModal && (
+        <FeatureSelectionModal
+          onClose={setShowFeatureModal}
+          onSave={handleAddFeature}
+          basePriceDollars={priceInput}
+        />
+      )}
     </div>
   );
 }

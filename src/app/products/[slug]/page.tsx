@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, use } from "react";
+import React, { useState, useRef, use, useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -25,15 +25,37 @@ interface MediaItem {
   url: string;
 }
 
-const SIZE_OPTIONS = ["S", "M", "L", "XL", "XXL"];
-
 export default function ProductPage({ params }: ProductPageProps) {
   const { slug } = use(params);
   const product = useQuery(api.products.getBySlug, { slug });
 
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [selectedSize, setSelectedSize] = useState<string>("");
+  const [selectedDimension, setSelectedDimension] = useState<string>("");
+  const [selectedFinish, setSelectedFinish] = useState<string>("");
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+
+  const effectivePrice = useMemo(() => {
+    let total = product?.price ?? 0;
+    if (!product?.features) return total;
+
+    const findAdj = (type: string, match: string, byLabel = false) => {
+      const f = product.features?.find(fe => fe.type === type && (byLabel ? fe.label === match : fe.value === match));
+      return f?.priceAdjustment ?? 0;
+    };
+
+    if (selectedColor) total += findAdj("color", selectedColor, true);
+    if (selectedSize) total += findAdj("size", selectedSize);
+    if (selectedDimension) total += findAdj("dimension", selectedDimension);
+    if (selectedFinish) total += findAdj("finish", selectedFinish);
+
+    return Math.max(0, total);
+  }, [product?.price, product?.features, selectedColor, selectedSize, selectedDimension, selectedFinish]);
+
+  const hasPricedFeatures = useMemo(
+    () => product?.features?.some(f => f.priceAdjustment !== undefined && f.priceAdjustment !== 0) ?? false,
+    [product?.features]
+  );
   const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({ display: "none" });
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -147,11 +169,43 @@ export default function ProductPage({ params }: ProductPageProps) {
           <div className="lg:col-span-6 space-y-8">
             <div className="border-b border-border pb-6 space-y-3">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">{product.title}</h1>
-              <div className="flex items-baseline gap-0.5">
-                <span className="text-lg font-light text-foreground/80 align-super">$</span>
-                <span className="text-4xl font-semibold tracking-tight text-foreground">{Math.floor(product.price / 100)}</span>
-                <span className="text-lg font-light text-foreground/80 align-super">{(product.price % 100).toString().padStart(2, "0")}</span>
-              </div>
+              {(() => {
+                const hasNoSelection = !selectedColor && !selectedSize && !selectedDimension && !selectedFinish;
+                const displayPrice = hasPricedFeatures && hasNoSelection ? product.price : effectivePrice;
+                const dollars = Math.floor(displayPrice / 100);
+                const cents = (displayPrice % 100).toString().padStart(2, "0");
+                return (
+                  <div className="flex items-baseline gap-0.5">
+                    <span className="text-lg font-light text-foreground/80 align-super">$</span>
+                    <span className="text-4xl font-semibold tracking-tight text-foreground">{dollars}</span>
+                    <span className="text-lg font-light text-foreground/80 align-super">.{cents}</span>
+                    {hasPricedFeatures && hasNoSelection && (
+                      <span className="text-sm text-muted-foreground ml-1 font-normal">from</span>
+                    )}
+                  </div>
+                );
+              })()}
+              {effectivePrice !== product.price && effectivePrice > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Base ${(product.price / 100).toFixed(2)}
+                  {selectedColor && (() => {
+                    const f = product.features?.find(fe => fe.type === "color" && fe.label === selectedColor);
+                    return f?.priceAdjustment ? ` + color (${f.label}) $${(f.priceAdjustment / 100).toFixed(2)}` : "";
+                  })()}
+                  {selectedSize && (() => {
+                    const f = product.features?.find(fe => fe.type === "size" && fe.value === selectedSize);
+                    return f?.priceAdjustment ? ` + size (${f.value}) $${(f.priceAdjustment / 100).toFixed(2)}` : "";
+                  })()}
+                  {selectedDimension && (() => {
+                    const f = product.features?.find(fe => fe.type === "dimension" && fe.value === selectedDimension);
+                    return f?.priceAdjustment ? ` + dimensions $${(f.priceAdjustment / 100).toFixed(2)}` : "";
+                  })()}
+                  {selectedFinish && (() => {
+                    const f = product.features?.find(fe => fe.type === "finish" && fe.value === selectedFinish);
+                    return f?.priceAdjustment ? ` + finish (${f.value}) $${(f.priceAdjustment / 100).toFixed(2)}` : "";
+                  })()}
+                </p>
+              )}
             </div>
 
             {/* SELECTION AREA */}
@@ -162,20 +216,20 @@ export default function ProductPage({ params }: ProductPageProps) {
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Color</Label>
                   <div className="flex flex-wrap gap-2">
-                    {product.features.map((feature) => (
+                    {product.features.filter((f) => f.type === "color").map((feature, i) => (
                       <button
-                        key={feature.featureType}
+                        key={`color-${feature.label}-${i}`}
                         type="button"
-                        onClick={() => setSelectedColor(feature.featureType)}
+                        onClick={() => setSelectedColor(feature.label)}
                         className={`flex items-center gap-2 px-3 py-2 border-2 rounded-md transition-all ${
-                          selectedColor === feature.featureType
+                          selectedColor === feature.label
                             ? "border-primary bg-primary/10 ring-1 ring-primary"
                             : "border-border hover:bg-muted"
                         }`}
                       >
-                        {selectedColor === feature.featureType && <Check className="size-4 text-primary" />}
-                        <div className="w-4 h-4 rounded-full border border-black/10" style={{ backgroundColor: feature.color }} />
-                        <span className="text-sm font-medium">{feature.featureType}</span>
+                        {selectedColor === feature.label && <Check className="size-4 text-primary" />}
+                        <div className="w-4 h-4 rounded-full border border-black/10" style={{ backgroundColor: feature.value }} />
+                        <span className="text-sm font-medium">{feature.label}</span>
                       </button>
                     ))}
                   </div>
@@ -185,35 +239,93 @@ export default function ProductPage({ params }: ProductPageProps) {
               <Separator />
 
               {/* Material Section */}
-              {product.material && (
+              {(() => {
+                const m = product.features?.find((f) => f.type === "material");
+                return m ? (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Material</Label>
+                    <div className="p-3 border rounded-md bg-muted/20 text-sm font-medium text-foreground">
+                      {m.label}: {m.value}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Size Selector — dynamic from features */}
+              {product.features?.filter((f) => f.type === "size").length > 0 && (
                 <div className="space-y-3">
-                  <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Material</Label>
-                  <div className="p-3 border rounded-md bg-muted/20 text-sm font-medium text-foreground">
-                    {product.material}
+                  <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Size</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {product.features.filter((f) => f.type === "size").map((feature, i) => (
+                      <button
+                        key={`size-${feature.value}-${i}`}
+                        type="button"
+                        onClick={() => setSelectedSize(feature.value)}
+                        className={`px-4 h-10 flex items-center justify-center border-2 rounded-md transition-all text-sm font-medium ${
+                          selectedSize === feature.value
+                            ? "border-primary bg-primary text-primary-foreground ring-1 ring-primary"
+                            : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        {feature.value}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* Size Selector */}
-              <div className="space-y-3">
-                <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Size</Label>
-                <div className="flex flex-wrap gap-2">
-                  {SIZE_OPTIONS.map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => setSelectedSize(size)}
-                      className={`w-12 h-10 flex items-center justify-center border-2 rounded-md transition-all ${
-                        selectedSize === size
-                          ? "border-primary bg-primary text-primary-foreground ring-1 ring-primary"
-                          : "border-border hover:bg-muted"
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+              {/* Dimensions from features */}
+              {product.features?.filter((f) => f.type === "dimension").length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Dimensions</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {product.features.filter((f) => f.type === "dimension").map((feature, i) => {
+                      const parts = feature.value.split("x");
+                      const formatted = parts.map(p => `${p}cm`).join(" × ");
+                      return (
+                        <button
+                          key={`dim-${feature.value}-${i}`}
+                          type="button"
+                          onClick={() => setSelectedDimension(feature.value)}
+                          className={`px-4 py-2 border-2 rounded-md text-sm font-medium transition-all ${
+                            selectedDimension === feature.value
+                              ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary"
+                              : "border-border hover:bg-muted"
+                          }`}
+                        >
+                          {formatted}
+                          {feature.label && feature.label !== "Dimensions" && (
+                            <span className="text-xs text-muted-foreground ml-1">({feature.label})</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Finish from features */}
+              {product.features?.filter((f) => f.type === "finish").length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Finish</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {product.features.filter((f) => f.type === "finish").map((feature, i) => (
+                      <button
+                        key={`finish-${feature.value}-${i}`}
+                        type="button"
+                        onClick={() => setSelectedFinish(feature.value)}
+                        className={`px-4 py-2 border-2 rounded-md text-sm font-medium transition-all ${
+                          selectedFinish === feature.value
+                            ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary"
+                            : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        {feature.value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Description & Footer */}
@@ -223,7 +335,12 @@ export default function ProductPage({ params }: ProductPageProps) {
             </div>
 
             <div className="border border-border rounded-xl p-6 bg-muted/30 dark:bg-muted/10 space-y-4">
-              <Button className="w-full h-11 text-base font-semibold shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98]" disabled={!selectedColor || !selectedSize}>
+              <Button className="w-full h-11 text-base font-semibold shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98]" disabled={
+                (product.features?.some(f => f.type === "color") ? !selectedColor : false) ||
+                (product.features?.some(f => f.type === "size") ? !selectedSize : false) ||
+                (product.features?.some(f => f.type === "dimension") ? !selectedDimension : false) ||
+                (product.features?.some(f => f.type === "finish") ? !selectedFinish : false)
+              }>
                 Add to Cart
               </Button>
               <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border text-xs text-muted-foreground">

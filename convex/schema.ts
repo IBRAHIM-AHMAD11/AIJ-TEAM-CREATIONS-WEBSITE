@@ -33,22 +33,19 @@ const schema = defineSchema({
     video: v.optional(v.string()),
     features: v.optional(
       v.array(
-        v.union(
-          v.object({
-            type: v.union(
-              v.literal("color"),
-              v.literal("size"),
-              v.literal("material"),
-              v.literal("custom")
-            ),
-            label: v.string(),
-            value: v.string(),
-          }),
-          v.object({
-            color: v.string(),
-            featureType: v.string(),
-          })
-        )
+        v.object({
+          type: v.union(
+            v.literal("color"),
+            v.literal("size"),
+            v.literal("material"),
+            v.literal("dimension"),
+            v.literal("finish"),
+            v.literal("custom")
+          ),
+          label: v.string(),
+          value: v.string(),
+          priceAdjustment: v.optional(v.number()),
+        })
       )
     ),
   })

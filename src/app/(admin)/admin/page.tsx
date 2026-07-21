@@ -268,7 +268,7 @@ export default function AdminPage() {
           <DialogHeader>
             <DialogTitle className="text-slate-900 font-bold">Are you sure?</DialogTitle>
             <DialogDescription className="text-slate-500 pt-1">
-              This will permanently delete <strong className="text-slate-900 font-semibold">"{productToDelete?.title}"</strong> from your database and remove any uploaded image files. This action cannot be undone.
+              This will permanently delete <strong className="text-slate-900 font-semibold">"{productToDelete?.title}"</strong> and all its associated images and videos. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
