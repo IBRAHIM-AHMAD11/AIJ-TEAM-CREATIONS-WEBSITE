@@ -1,10 +1,9 @@
-// components/sidebar.tsx
 "use client";
 
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api"; 
 import { UserButton } from '@/features/auth/components/user-avatar';
-import { Filter, Package, Layers } from 'lucide-react';
+import { Filter, Package, Layers, ArrowUpDown } from 'lucide-react';
 
 import {
   Sidebar as ShadcnSidebar,
@@ -25,13 +24,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
-import { selectedCategoriesAtom, stockOnlyAtom } from "./atoms";
+import { selectedCategoriesAtom, stockOnlyAtom, sortByAtom, type SortOption } from "./atoms";
 import { useAtom } from 'jotai';
+
+const sortOptions: { value: SortOption; label: string }[] = [
+  { value: "", label: "Default" },
+  { value: "price-asc", label: "Price: Low to High" },
+  { value: "price-desc", label: "Price: High to Low" },
+  { value: "name-asc", label: "Name: A-Z" },
+  { value: "name-desc", label: "Name: Z-A" },
+  { value: "newest", label: "Newest First" },
+];
 
 export default function Sidebar() {
   const categories = useQuery(api.categories.list) || [];
   const [selectedCategories, setSelectedCategories] = useAtom(selectedCategoriesAtom);
   const [stockOnly, setStockOnly] = useAtom(stockOnlyAtom);
+  const [sortBy, setSortBy] = useAtom(sortByAtom);
 
   const handleCategoryToggle = (categoryId: string) => {
     setSelectedCategories((prev) =>
@@ -62,7 +71,7 @@ export default function Sidebar() {
             </SidebarGroupLabel>
             
             <SidebarGroupContent>
-               {/* @ts-ignore */}
+               {/* @ts-expect-error – shadcn Accordion accepts type="multiple" */}
               <Accordion type="multiple" defaultValue={["categories", "status"]} className="w-full">
                 
                 {/* Categories Group */}
@@ -124,6 +133,34 @@ export default function Sidebar() {
                         In Stock Only
                       </label>
                     </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <Separator className="my-2 bg-slate-100" />
+
+                {/* Sort Group */}
+                <AccordionItem value="sort" className="border-none">
+                  <AccordionTrigger className="hover:no-underline py-2 text-sm font-semibold text-slate-700">
+                    <div className="flex items-center gap-2">
+                      <ArrowUpDown className="h-4 w-4 text-slate-400" />
+                      <span>Sort By</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-1 pb-2 space-y-1 pl-1">
+                    {sortOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setSortBy(option.value)}
+                        className={`w-full text-left px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                          sortBy === option.value
+                            ? "bg-slate-900 text-white"
+                            : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                   </AccordionContent>
                 </AccordionItem>
                 

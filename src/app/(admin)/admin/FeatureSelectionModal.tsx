@@ -321,7 +321,7 @@ export function FeatureSelectionModal({ onClose, onSave, basePriceDollars }: Fea
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl p-6 max-w-lg w-full shadow-xl border border-gray-100 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="mb-4">

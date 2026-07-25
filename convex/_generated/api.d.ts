@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as cart from "../cart.js";
 import type * as categories from "../categories.js";
 import type * as http from "../http.js";
 import type * as migrations from "../migrations.js";
@@ -26,6 +27,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  cart: typeof cart;
   categories: typeof categories;
   http: typeof http;
   migrations: typeof migrations;

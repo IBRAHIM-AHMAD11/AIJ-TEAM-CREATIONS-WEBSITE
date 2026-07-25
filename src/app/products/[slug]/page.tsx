@@ -1,19 +1,29 @@
 "use client";
 
-import React, { useState, useRef, use, useMemo } from "react";
+import React, { useState, useRef, use, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { 
+import { AnimatePresence, motion } from "framer-motion";
+import Breadcrumbs from "@/components/ui/breadcrumbs";
+import ImageLightbox from "@/components/ui/image-lightbox";
+import RelatedProducts from "./relatedProducts";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import {
   ShieldCheck, 
   RotateCcw, 
   Truck, 
   Play, 
-  ArrowBigLeftIcon, 
-  Check 
+  Check, 
+  Minus, 
+  Plus, 
+  Loader2,
+  ShoppingCart
 } from "lucide-react";
 
 interface ProductPageProps {
@@ -25,6 +35,26 @@ interface MediaItem {
   url: string;
 }
 
+function computeEffectivePrice(
+  product: { price?: number; features?: Array<{ type: string; label: string; value: string; priceAdjustment?: number }> } | null | undefined,
+  selectedColor: string,
+  selectedSize: string,
+  selectedDimension: string,
+  selectedFinish: string
+) {
+  let total = product?.price ?? 0;
+  if (!product?.features) return total;
+  const findAdj = (type: string, match: string, byLabel = false) => {
+    const f = product.features?.find(fe => fe.type === type && (byLabel ? fe.label === match : fe.value === match));
+    return f?.priceAdjustment ?? 0;
+  };
+  if (selectedColor) total += findAdj("color", selectedColor, true);
+  if (selectedSize) total += findAdj("size", selectedSize);
+  if (selectedDimension) total += findAdj("dimension", selectedDimension);
+  if (selectedFinish) total += findAdj("finish", selectedFinish);
+  return Math.max(0, total);
+}
+
 export default function ProductPage({ params }: ProductPageProps) {
   const { slug } = use(params);
   const product = useQuery(api.products.getBySlug, { slug });
@@ -33,49 +63,85 @@ export default function ProductPage({ params }: ProductPageProps) {
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedDimension, setSelectedDimension] = useState<string>("");
   const [selectedFinish, setSelectedFinish] = useState<string>("");
+  const [quantity, setQuantity] = useState(1);
+  const [buttonState, setButtonState] = useState<"idle" | "loading">("idle");
+  const [showToast, setShowToast] = useState(false);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
-  const effectivePrice = useMemo(() => {
-    let total = product?.price ?? 0;
-    if (!product?.features) return total;
+  const { addRecentlyViewed } = useRecentlyViewed();
 
-    const findAdj = (type: string, match: string, byLabel = false) => {
-      const f = product.features?.find(fe => fe.type === type && (byLabel ? fe.label === match : fe.value === match));
-      return f?.priceAdjustment ?? 0;
-    };
+  useEffect(() => {
+    if (product) addRecentlyViewed(product._id);
+  }, [product, addRecentlyViewed]);
 
-    if (selectedColor) total += findAdj("color", selectedColor, true);
-    if (selectedSize) total += findAdj("size", selectedSize);
-    if (selectedDimension) total += findAdj("dimension", selectedDimension);
-    if (selectedFinish) total += findAdj("finish", selectedFinish);
+  const addToCart = useMutation(api.cart.addItem);
+  const router = useRouter();
 
-    return Math.max(0, total);
-  }, [product?.price, product?.features, selectedColor, selectedSize, selectedDimension, selectedFinish]);
-
-  const hasPricedFeatures = useMemo(
-    () => product?.features?.some(f => f.priceAdjustment !== undefined && f.priceAdjustment !== 0) ?? false,
-    [product?.features]
+  const similarProducts = useQuery(
+    api.products.getByCategory,
+    product ? { categoryId: product.categoryId, excludeId: product._id } : "skip"
   );
-  const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({ display: "none" });
+
+  const effectivePrice = computeEffectivePrice(product, selectedColor, selectedSize, selectedDimension, selectedFinish);
+  const hasPricedFeatures = product?.features?.some(f => f.priceAdjustment !== undefined && f.priceAdjustment !== 0) ?? false;
+
+  const handleAddToCart = useCallback(async () => {
+    if (buttonState !== "idle") return;
+    setButtonState("loading");
+    const features: Array<{ type: string; label: string; value: string }> = [];
+    if (selectedColor) {
+      const f = product?.features?.find(fe => fe.type === "color" && fe.label === selectedColor);
+      if (f) features.push({ type: f.type, label: f.label, value: f.value });
+    }
+    if (selectedSize) {
+      const f = product?.features?.find(fe => fe.type === "size" && fe.value === selectedSize);
+      if (f) features.push({ type: f.type, label: f.label, value: f.value });
+    }
+    if (selectedDimension) {
+      const f = product?.features?.find(fe => fe.type === "dimension" && fe.value === selectedDimension);
+      if (f) features.push({ type: f.type, label: f.label, value: f.value });
+    }
+    if (selectedFinish) {
+      const f = product?.features?.find(fe => fe.type === "finish" && fe.value === selectedFinish);
+      if (f) features.push({ type: f.type, label: f.label, value: f.value });
+    }
+    try {
+      await addToCart({
+        productId: product!._id,
+        quantity,
+        selectedFeatures: features.length > 0 ? features : undefined,
+      });
+      setButtonState("idle");
+      setShowToast(true);
+      setTimeout(() => {
+        setShowToast(false);
+        router.push("/store");
+      }, 1800);
+    } catch {
+      setButtonState("idle");
+    }
+  }, [product, selectedColor, selectedSize, selectedDimension, selectedFinish, quantity, buttonState, addToCart, router]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef<HTMLDivElement>(null);
 
   if (product === undefined) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex h-screen items-center justify-center">
         <p className="text-muted-foreground animate-pulse">Loading product details...</p>
-      </div>
+      </motion.div>
     );
   }
 
   if (product === null) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex h-screen flex-col items-center justify-center gap-4">
         <h1 className="text-2xl font-bold text-destructive">Product Not Found</h1>
         <p className="text-muted-foreground">The product you are looking for does not exist.</p>
         <Button>
           <Link href="/">Back to Shop</Link>
         </Button>
-      </div>
+      </motion.div>
     );
   }
 
@@ -98,34 +164,32 @@ export default function ProductPage({ params }: ProductPageProps) {
   const activeMedia = mediaItems[activeMediaIndex];
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current || activeMedia.type !== "image") return;
+    if (!containerRef.current || !zoomRef.current || activeMedia.type !== "image") return;
     const { left, top, width, height } = containerRef.current.getBoundingClientRect();
     const x = e.clientX - left;
     const y = e.clientY - top;
     const xPercent = (x / width) * 100;
     const yPercent = (y / height) * 100;
 
-    setZoomStyle({
-      display: "block",
-      backgroundImage: `url(${activeMedia.url})`,
-      backgroundPosition: `${xPercent}% ${yPercent}%`,
-      backgroundSize: "220%",
-    });
+    zoomRef.current.style.display = "block";
+    zoomRef.current.style.backgroundImage = `url(${activeMedia.url})`;
+    zoomRef.current.style.backgroundPosition = `${xPercent}% ${yPercent}%`;
+    zoomRef.current.style.backgroundSize = "220%";
   };
 
   const handleMouseLeave = () => {
-    setZoomStyle({ display: "none" });
+    if (zoomRef.current) zoomRef.current.style.display = "none";
   };
 
   return (
     <main>
       <div className="max-w-7xl mx-auto p-4 md:p-8">
-        <div className="mb-6">
-          <Link href="/">
-            <button className="group inline-flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted" aria-label="Go back">
-              <ArrowBigLeftIcon className="size-8 text-muted-foreground transition-all duration-300 ease-out group-hover:-translate-x-1 group-hover:text-foreground" fill="currentColor" />
-            </button>
-          </Link>
+        <div className="mb-2">
+          <Breadcrumbs items={[
+            { label: "Home", href: "/" },
+            { label: "Store", href: "/store" },
+            { label: product.title },
+          ]} />
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
@@ -147,7 +211,7 @@ export default function ProductPage({ params }: ProductPageProps) {
                       <Play className="size-5 text-primary fill-current" />
                     </div>
                   ) : (
-                    <img src={item.url} alt={`${product.title} thumbnail ${index + 1}`} className="object-cover w-full h-full" />
+                    <Image src={item.url} alt={`${product.title} thumbnail ${index + 1}`} fill className="object-cover" sizes="80px" />
                   )}
                 </button>
               ))}
@@ -157,10 +221,14 @@ export default function ProductPage({ params }: ProductPageProps) {
               {activeMedia.type === "video" ? (
                 <video src={activeMedia.url} controls autoPlay muted className="w-full h-full object-contain bg-black" />
               ) : (
-                <div className="w-full h-full cursor-zoom-in group/zoom">
-                  <img src={activeMedia.url} alt={product.title} className="object-contain w-full h-full p-4 transition-opacity duration-200 group-hover/zoom:opacity-0" />
-                  <div style={zoomStyle} className="absolute inset-0 bg-no-repeat pointer-events-none transition-shadow duration-300" />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(true)}
+                  className="w-full h-full cursor-zoom-in group/zoom"
+                >
+                  <Image src={activeMedia.url} alt={product.title} fill priority className="object-contain p-4 transition-opacity duration-200 group-hover/zoom:opacity-0" sizes="(max-width: 1024px) 100vw, 50vw" />
+                  <div ref={zoomRef} className="absolute inset-0 bg-no-repeat pointer-events-none" style={{ display: "none" }} />
+                </button>
               )}
             </div>
           </div>
@@ -252,7 +320,7 @@ export default function ProductPage({ params }: ProductPageProps) {
               })()}
 
               {/* Size Selector — dynamic from features */}
-              {product.features?.filter((f) => f.type === "size").length > 0 && (
+              {product.features && product.features.filter((f) => f.type === "size").length > 0 && (
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Size</Label>
                   <div className="flex flex-wrap gap-2">
@@ -275,7 +343,7 @@ export default function ProductPage({ params }: ProductPageProps) {
               )}
 
               {/* Dimensions from features */}
-              {product.features?.filter((f) => f.type === "dimension").length > 0 && (
+              {product.features && product.features.filter((f) => f.type === "dimension").length > 0 && (
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Dimensions</Label>
                   <div className="flex flex-wrap gap-2">
@@ -305,7 +373,7 @@ export default function ProductPage({ params }: ProductPageProps) {
               )}
 
               {/* Finish from features */}
-              {product.features?.filter((f) => f.type === "finish").length > 0 && (
+              {product.features && product.features.filter((f) => f.type === "finish").length > 0 && (
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Finish</Label>
                   <div className="flex flex-wrap gap-2">
@@ -335,13 +403,49 @@ export default function ProductPage({ params }: ProductPageProps) {
             </div>
 
             <div className="border border-border rounded-xl p-6 bg-muted/30 dark:bg-muted/10 space-y-4">
-              <Button className="w-full h-11 text-base font-semibold shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98]" disabled={
-                (product.features?.some(f => f.type === "color") ? !selectedColor : false) ||
-                (product.features?.some(f => f.type === "size") ? !selectedSize : false) ||
-                (product.features?.some(f => f.type === "dimension") ? !selectedDimension : false) ||
-                (product.features?.some(f => f.type === "finish") ? !selectedFinish : false)
-              }>
-                Add to Cart
+              {/* Quantity Selector */}
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Quantity</Label>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    className="size-8 flex items-center justify-center rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-40"
+                    disabled={quantity <= 1}
+                  >
+                    <Minus className="size-3.5" />
+                  </button>
+                  <span className="w-10 text-center text-sm font-semibold tabular-nums">{quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(q => Math.min(99, q + 1))}
+                    className="size-8 flex items-center justify-center rounded-md border border-border hover:bg-muted transition-colors"
+                  >
+                    <Plus className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                className="w-full h-12 text-base font-semibold shadow-xs transition-all duration-300 relative overflow-hidden"
+                disabled={
+                  buttonState !== "idle" ||
+                  (product.features?.some(f => f.type === "color") ? !selectedColor : false) ||
+                  (product.features?.some(f => f.type === "size") ? !selectedSize : false) ||
+                  (product.features?.some(f => f.type === "dimension") ? !selectedDimension : false) ||
+                  (product.features?.some(f => f.type === "finish") ? !selectedFinish : false)
+                }
+                onClick={handleAddToCart}
+              >
+                <span className={`flex items-center justify-center gap-2 transition-all duration-300 ${buttonState === "loading" ? "opacity-0 scale-75" : ""}`}>
+                  <ShoppingCart className="size-4" />
+                  Add to Cart
+                </span>
+                {buttonState === "loading" && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="size-5 animate-spin" />
+                  </span>
+                )}
               </Button>
               <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border text-xs text-muted-foreground">
                 <div className="flex items-center gap-1.5"><Truck className="size-4 text-primary" /> <span>Fast Delivery</span></div>
@@ -352,6 +456,66 @@ export default function ProductPage({ params }: ProductPageProps) {
           </div>
         </div>
       </div>
+
+      {similarProducts && similarProducts.length > 0 && (
+        <RelatedProducts products={similarProducts} />
+      )}
+
+      {/* Success Toast */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ y: 120, opacity: 0, scale: 0.9 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 120, opacity: 0, scale: 0.9 }}
+            transition={{ type: "spring", damping: 22, stiffness: 350, mass: 0.8 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm"
+          >
+            <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-green-200 dark:border-green-800 p-5 overflow-hidden">
+              {/* Progress bar */}
+              <motion.div
+                initial={{ scaleX: 1 }}
+                animate={{ scaleX: 0 }}
+                transition={{ duration: 1.8, ease: "linear" }}
+                style={{ transformOrigin: "left" }}
+                className="absolute bottom-0 left-0 right-0 h-1 bg-green-500/30"
+              />
+
+              <div className="flex items-center gap-4">
+                {/* Checkmark circle */}
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", damping: 15, stiffness: 300, delay: 0.15 }}
+                  className="size-12 shrink-0 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center"
+                >
+                  <motion.div
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 0.4, delay: 0.3 }}
+                  >
+                    <Check className="size-6 text-green-600 dark:text-green-400" strokeWidth={3} />
+                  </motion.div>
+                </motion.div>
+
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-green-700 dark:text-green-300">Added to Cart</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">
+                    {product?.title} × {quantity}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ImageLightbox
+        images={dbImages}
+        initialIndex={activeMediaIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </main>
   );
 }

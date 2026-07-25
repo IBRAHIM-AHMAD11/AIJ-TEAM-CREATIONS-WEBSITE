@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 
 export const get = query({
   args: {},
@@ -94,10 +95,87 @@ export const deleteProduct = mutation({
   },
 });
 
+export const updateProduct = mutation({
+  args: {
+    id: v.id("products"),
+    title: v.string(),
+    slug: v.string(),
+    description: v.string(),
+    price: v.number(),
+    inventoryCount: v.number(),
+    categoryId: v.id("categories"),
+    images: v.array(v.string()),
+    isActive: v.boolean(),
+    video: v.optional(v.string()),
+    features: v.optional(
+      v.array(
+        v.object({
+          type: v.union(
+            v.literal("color"),
+            v.literal("size"),
+            v.literal("material"),
+            v.literal("dimension"),
+            v.literal("finish"),
+            v.literal("custom")
+          ),
+          label: v.string(),
+          value: v.string(),
+          priceAdjustment: v.optional(v.number()),
+        })
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...data } = args;
+    return await ctx.db.patch(id, data);
+  },
+});
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("products").order("desc").collect();
+  },
+});
+
+export const getById = query({
+  args: { id: v.id("products") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const getPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("products")
+      .withIndex("by_status", (q) => q.eq("isActive", true))
+      .order("desc")
+      .paginate(args.paginationOpts);
+  },
+});
+
+export const getByCategory = query({
+  args: { categoryId: v.id("categories"), excludeId: v.optional(v.id("products")) },
+  handler: async (ctx, args) => {
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_status", (q) => q.eq("isActive", true))
+      .collect();
+    return products.filter((p) => p.categoryId === args.categoryId && p._id !== args.excludeId).slice(0, 4);
+  },
+});
+
+export const getByIds = query({
+  args: { ids: v.array(v.id("products")) },
+  handler: async (ctx, args) => {
+    const results = [];
+    for (const id of args.ids) {
+      const product = await ctx.db.get(id);
+      if (product) results.push(product);
+    }
+    return results;
   },
 });
 

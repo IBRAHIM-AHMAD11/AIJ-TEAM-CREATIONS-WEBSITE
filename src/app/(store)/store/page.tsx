@@ -1,15 +1,38 @@
 "use client"
 
+import { usePaginatedQuery, useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import ProductGrid from "@/app/(store)/store/productGrid";
-import { useGetProducts } from "../../../../convex/useGetProducts";
+import Breadcrumbs from "@/components/ui/breadcrumbs";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import RecentlyViewed from "./recentlyViewed";
 
 const Home = () => {
 
-  const { data, isLoading } = useGetProducts();
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.products.getPaginated,
+    {},
+    { initialNumItems: 12 }
+  );
+
+  const { recentlyViewedIds } = useRecentlyViewed();
+  const recentlyViewedProducts = useQuery(
+    api.products.getByIds,
+    recentlyViewedIds.length > 0 ? { ids: recentlyViewedIds as Id<"products">[] } : "skip"
+  );
 
   return (
-    <div>
-      <ProductGrid products={data} isLoading={isLoading} />
+    <div className="px-4 pt-4">
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Store" }]} />
+      <ProductGrid
+        products={results}
+        isLoading={status === "LoadingFirstPage"}
+        isLoadingMore={status === "LoadingMore"}
+        canLoadMore={status !== "Exhausted"}
+        onLoadMore={() => loadMore(12)}
+      />
+      <RecentlyViewed products={recentlyViewedProducts ?? []} />
     </div>
   )
 }

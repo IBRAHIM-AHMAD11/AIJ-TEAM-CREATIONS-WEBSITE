@@ -188,10 +188,10 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
                   <FcGoogle className="size-5 absolute left-2.5 top-3" />
                   Continue with Google
                </Button>
-               <Button disabled={pending} className="w-full relative" variant="outline" size="lg" onClick={() => {}}>
-                  <FaFacebook className="size-5 absolute left-2.5 top-3" />
-                  Continue with Facebook
-               </Button>
+                <Button disabled={pending} className="w-full relative" variant="outline" size="lg" onClick={() => {handleProviderSignUp("facebook")}}>
+                   <FaFacebook className="size-5 absolute left-2.5 top-3" />
+                   Continue with Facebook
+                </Button>
             </div>
             
             <p className="text-sm text-center text-muted-foreground">

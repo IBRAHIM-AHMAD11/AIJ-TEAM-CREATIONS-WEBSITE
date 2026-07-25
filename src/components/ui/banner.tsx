@@ -2,11 +2,10 @@
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state"
 import { type LucideIcon, XIcon } from "lucide-react"
-import {
+import React, {
   type ComponentProps,
   createContext,
   type HTMLAttributes,
-  type MouseEventHandler,
   useContext,
 } from "react"
 import { Button } from "@/components/ui/button"
@@ -118,9 +117,9 @@ export const BannerClose = ({
 }: BannerCloseProps) => {
   const { setShow } = useContext(BannerContext)
 
-  const handleClick: MouseEventHandler<HTMLButtonElement> = e => {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     setShow(false)
-    onClick?.(e)
+    onClick?.(e as any)
   }
 
   return (

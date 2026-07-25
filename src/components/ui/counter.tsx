@@ -3,16 +3,17 @@
 import { MinusIcon, PlusIcon } from "lucide-react"
 import { type HTMLMotionProps, motion, type SpringOptions } from "motion/react"
 import * as React from "react"
-import { Button, type ButtonProps } from "@/components/ui/button"
+import { type ComponentProps } from "react"
+import { Button } from "@/components/ui/button"
+
+type ButtonProps = ComponentProps<typeof Button>
 import { cn } from "@/lib/utils"
-import { SlidingNumber, type SlidingNumberProps } from "@/packages/text/sliding-number"
 
 export interface CounterProps extends Omit<HTMLMotionProps<"div">, "children"> {
   number: number
   setNumber: (value: number) => void
   transition?: SpringOptions
   buttonProps?: ButtonProps
-  slidingNumberProps?: Partial<SlidingNumberProps>
 }
 
 export const Counter = React.forwardRef<HTMLDivElement, CounterProps>(
@@ -23,7 +24,6 @@ export const Counter = React.forwardRef<HTMLDivElement, CounterProps>(
       className,
       transition = { type: "spring", bounce: 0, stiffness: 300, damping: 30 },
       buttonProps,
-      slidingNumberProps,
       ...props
     },
     ref,
@@ -60,11 +60,7 @@ export const Counter = React.forwardRef<HTMLDivElement, CounterProps>(
           </Button>
         </motion.div>
 
-        <SlidingNumber
-          number={number}
-          className="min-w-[2ch] text-center font-medium tabular-nums"
-          {...slidingNumberProps}
-        />
+        <span className="min-w-[2ch] text-center font-medium tabular-nums">{number}</span>
 
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Button

@@ -57,6 +57,23 @@ const schema = defineSchema({
     name: v.string(),
     slug: v.string(),
   }).index("by_slug", ["slug"]),
+
+  cartItems: defineTable({
+    userId: v.id("users"),
+    productId: v.id("products"),
+    quantity: v.number(),
+    selectedFeatures: v.optional(
+      v.array(
+        v.object({
+          type: v.string(),
+          label: v.string(),
+          value: v.string(),
+        })
+      )
+    ),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_product", ["userId", "productId"]),
 });
 
 export default schema;

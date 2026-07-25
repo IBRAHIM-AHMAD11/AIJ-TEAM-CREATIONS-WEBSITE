@@ -1,10 +1,10 @@
 "use client"
 
 import { CheckIcon, XIcon } from "lucide-react"
+import * as React from "react"
 import {
   type ComponentProps,
   createContext,
-  type MouseEventHandler,
   type ReactNode,
   useContext,
   useEffect,
@@ -120,9 +120,9 @@ export const TagsValue = ({
   onRemove,
   ...props
 }: TagsValueProps & { onRemove?: () => void }) => {
-  const handleRemove: MouseEventHandler<HTMLDivElement> = event => {
-    event.preventDefault()
-    event.stopPropagation()
+  const handleRemove = (event?: React.MouseEvent<HTMLDivElement>) => {
+    event?.preventDefault()
+    event?.stopPropagation()
     onRemove?.()
   }
 

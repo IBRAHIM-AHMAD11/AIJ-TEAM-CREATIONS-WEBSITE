@@ -1,14 +1,15 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../../../../convex/_generated/api";
-import { useState, useRef } from "react";
+import { api } from "../../../../../../../convex/_generated/api";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { use } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 
-// Components
-import { FeatureSelectionModal } from "../../FeatureSelectionModal";
+import { Button } from "@/components/ui/button";
+import { FeatureSelectionModal } from "../../../FeatureSelectionModal";
 import { upscaleImage } from "@/lib/upscaleImage";
 
 type FeatureType = "color" | "size" | "material" | "dimension" | "finish" | "custom";
@@ -20,17 +21,19 @@ interface ProductFeature {
   priceAdjustment?: number;
 }
 
-export default function NewProductPage() {
+const isConvexStorageUrl = (url: string) => url.includes("api/storage/");
+
+export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
-  
-  // Convex Mutations & Queries
-  const createProduct = useMutation(api.products.createProduct);
+
+  const product = useQuery(api.products.getById, { id: id as any });
+  const updateProduct = useMutation(api.products.updateProduct);
   const createCategory = useMutation(api.categories.create);
   const categories = useQuery(api.categories.list) || [];
   const generateUploadUrl = useMutation(api.upload.generateUploadUrl);
   const getImageUrl = useMutation(api.upload.getStorageUrl);
 
-  // Core Form State
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
@@ -39,21 +42,46 @@ export default function NewProductPage() {
   const [categoryId, setCategoryId] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState("");
-
-  // Feature State
+  const [uploadedVideoUrl, setUploadedVideoUrl] = useState("");
   const [features, setFeatures] = useState<ProductFeature[]>([]);
-  const [showFeatureModal, setShowFeatureModal] = useState(false);
+  const [isActive, setIsActive] = useState(true);
 
-  // UI States
+  const [showFeatureModal, setShowFeatureModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [videoUploading, setVideoUploading] = useState(false);
-  const [uploadedVideoUrl, setUploadedVideoUrl] = useState("");
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [newCatName, setNewCatName] = useState("");
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!product) return;
+    setTitle(product.title);
+    setSlug(product.slug);
+    setDescription(product.description);
+    setPriceInput((product.price / 100).toFixed(2));
+    setInventoryCount(product.inventoryCount);
+    setCategoryId(product.categoryId);
+    setUploadedImages(product.images || []);
+    setFeatures(product.features || []);
+    setIsActive(product.isActive);
+
+    if (product.video) {
+      if (isConvexStorageUrl(product.video)) {
+        setUploadedVideoUrl(product.video);
+        setVideoUrl("");
+      } else {
+        setVideoUrl(product.video);
+        setUploadedVideoUrl("");
+      }
+    } else {
+      setVideoUrl("");
+      setUploadedVideoUrl("");
+    }
+  }, [product]);
 
   const convertToSlug = (text: string) => {
     return text
@@ -65,7 +93,7 @@ export default function NewProductPage() {
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setTitle(value);
-    setSlug(convertToSlug(value)); 
+    setSlug(convertToSlug(value));
   };
 
   const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,10 +149,10 @@ export default function NewProductPage() {
       if (!result.ok) throw new Error("Upload failed");
       const { storageId } = await result.json();
 
-      const videoUrl = await getImageUrl({ storageId });
-      if (videoUrl) {
-        setUploadedVideoUrl(videoUrl);
-        setVideoUrl(""); // clear URL input when file uploaded
+      const videoUrlResult = await getImageUrl({ storageId });
+      if (videoUrlResult) {
+        setUploadedVideoUrl(videoUrlResult);
+        setVideoUrl("");
       }
       toast.success("Video added");
     } catch (err) {
@@ -145,7 +173,7 @@ export default function NewProductPage() {
     try {
       const catSlug = convertToSlug(newCatName);
       const newCatId = await createCategory({ name: newCatName, slug: catSlug });
-      setCategoryId(newCatId); 
+      setCategoryId(newCatId);
       setNewCatName("");
       setShowCategoryModal(false);
       toast.success("Category created");
@@ -164,7 +192,9 @@ export default function NewProductPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!categoryId) return toast.message("Please select or create a category first!");
+    if (!product) return;
+
+    if (!categoryId) return toast.error("Please select a category!");
 
     const priceInCents = Math.round(parseFloat(priceInput) * 100);
 
@@ -172,21 +202,19 @@ export default function NewProductPage() {
       return toast.error("Please enter a valid base price.");
     }
 
-    // Price verifier: ensure no combination can result in a negative price
     const negativeSum = features
       .filter((f) => f.priceAdjustment !== undefined && f.priceAdjustment < 0)
       .reduce((sum, f) => sum + (f.priceAdjustment ?? 0), 0);
 
     if (priceInCents + negativeSum <= 0) {
-      return toast.error(
-        `Price would go negative with current adjustments. The lowest possible price is $${((priceInCents + negativeSum) / 100).toFixed(2)}. Increase base price or reduce discounts.`
-      );
+      return toast.error("Price would go negative with current adjustments.");
     }
 
     setLoading(true);
 
     try {
-      await createProduct({
+      await updateProduct({
+        id: product._id as any,
         title,
         slug,
         description,
@@ -195,24 +223,52 @@ export default function NewProductPage() {
         categoryId: categoryId as any,
         images: uploadedImages,
         video: (uploadedVideoUrl || videoUrl).trim() || undefined,
-        features, 
-        isActive: true,
+        features,
+        isActive,
       });
 
-      toast.success("Product successfully created!");
+      toast.success("Product updated successfully!");
       router.push("/admin");
     } catch (error) {
-      toast.error("Error saving product to database.");
+      toast.error("Failed to update product.");
     } finally {
       setLoading(false);
     }
   };
 
+  if (product === undefined) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <p className="text-slate-400 animate-pulse">Loading product...</p>
+      </div>
+    );
+  }
+
+  if (product === null) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center gap-4">
+        <h2 className="text-xl font-bold text-red-600">Product Not Found</h2>
+        <p className="text-sm text-slate-500">The product you are trying to edit does not exist.</p>
+        <Button>
+          <Link href="/admin">Back to Dashboard</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto bg-white p-8 rounded-xl border border-gray-100 shadow-sm space-y-8 relative">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Create New Product</h1>
-        <p className="text-sm text-gray-500">Configure your listing details, upload product assets, and assign catalog tags.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
+          <p className="text-sm text-gray-500">Update your listing details, assets, and catalog tags.</p>
+        </div>
+        <Link
+          href="/admin"
+          className="inline-flex items-center justify-center h-8 px-3 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+        >
+          Back to Dashboard
+        </Link>
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -280,7 +336,7 @@ export default function NewProductPage() {
           />
         </div>
 
-        {/* Features Section */}
+        {/* Features */}
         <div className="p-4 border rounded-md bg-gray-50">
           <div className="flex justify-between items-center mb-3">
             <label className="block text-sm font-medium text-gray-700">Display Features</label>
@@ -292,7 +348,6 @@ export default function NewProductPage() {
               + Assign Feature
             </button>
           </div>
-          
           {features.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {features.map((feature, index) => (
@@ -333,8 +388,8 @@ export default function NewProductPage() {
           )}
         </div>
 
-        {/* Price and Inventory */}
-        <div className="grid grid-cols-2 gap-6">
+        {/* Price, Stock, Active */}
+        <div className="grid grid-cols-3 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700">Price ($ USD)</label>
             <input
@@ -356,135 +411,139 @@ export default function NewProductPage() {
               onChange={(e) => setInventoryCount(Number(e.target.value))}
             />
           </div>
+          <div className="flex items-end pb-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-700">Active</span>
+            </label>
+          </div>
         </div>
 
-        {/* Media — Images + Video */}
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Product Images <span className="text-xs text-gray-400 font-normal">(upload one at a time)</span>
-            </label>
-            
-            {/* Image grid */}
-            {uploadedImages.length > 0 && (
-              <div className="flex flex-wrap gap-3 mb-3">
-                {uploadedImages.map((url, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={url}
-                      alt={`Product ${index + 1}`}
-                      className="h-24 w-24 object-cover rounded-lg border border-gray-200"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(index)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition hover:bg-red-600"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
-            >
-              <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
-              {uploading ? (
-                <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
-              ) : (
-                <p className="text-sm text-gray-600">
-                  {uploadedImages.length === 0 ? "Click to add images" : "Click to add another image"}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Video — upload file OR paste URL (only one) */}
-          <div className="p-4 border rounded-md bg-gray-50">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Product Video <span className="text-xs text-gray-400 font-normal">optional — upload a file or paste a link</span>
-            </label>
-
-            {uploadedVideoUrl ? (
-              <div className="flex items-center gap-3 p-3 bg-white border rounded-md">
-                <span className="text-sm text-green-600 font-medium">✓ Video uploaded</span>
-                <span className="text-xs text-gray-400 truncate flex-1">{uploadedVideoUrl}</span>
-                <button
-                  type="button"
-                  onClick={handleRemoveVideo}
-                  className="text-xs text-red-500 hover:text-red-700 font-semibold"
-                >
-                  Remove
-                </button>
-              </div>
-            ) : videoUrl.trim() ? (
-              <div className="flex items-center gap-3 p-3 bg-white border rounded-md">
-                <span className="text-sm text-blue-600 font-medium">✓ Video link added</span>
-                <span className="text-xs text-gray-400 truncate flex-1">{videoUrl}</span>
-                <button
-                  type="button"
-                  onClick={() => setVideoUrl("")}
-                  className="text-xs text-red-500 hover:text-red-700 font-semibold"
-                >
-                  Remove
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div
-                  onClick={() => videoFileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
-                >
-                  <input
-                    type="file"
-                    accept="video/*"
-                    ref={videoFileInputRef}
-                    className="hidden"
-                    onChange={handleVideoUpload}
+        {/* Images */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Product Images <span className="text-xs text-gray-400 font-normal">(upload one at a time)</span>
+          </label>
+          {uploadedImages.length > 0 && (
+            <div className="flex flex-wrap gap-3 mb-3">
+              {uploadedImages.map((url, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={url}
+                    alt={`Product ${index + 1}`}
+                    className="h-24 w-24 object-cover rounded-lg border border-gray-200"
                   />
-                  {videoUploading ? (
-                    <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
-                  ) : (
-                    <p className="text-sm text-gray-600">Click to upload a video file</p>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition hover:bg-red-600"
+                  >
+                    ×
+                  </button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-px flex-1 bg-gray-200" />
-                  <span className="text-xs text-gray-400">or</span>
-                  <span className="h-px flex-1 bg-gray-200" />
-                </div>
-                <input
-                  type="url"
-                  value={videoUrl}
-                  onChange={(e) => {
-                    setVideoUrl(e.target.value);
-                    if (uploadedVideoUrl) setUploadedVideoUrl(""); // clear uploaded file when URL entered
-                  }}
-                  placeholder="Paste a video URL (YouTube, Vimeo, MP4...)"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 text-sm"
-                />
-              </div>
+              ))}
+            </div>
+          )}
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-gray-300 rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
+          >
+            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
+            {uploading ? (
+              <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
+            ) : (
+              <p className="text-sm text-gray-600">
+                {uploadedImages.length === 0 ? "Click to add images" : "Click to add another image"}
+              </p>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Video */}
+        <div className="p-4 border rounded-md bg-gray-50">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Product Video <span className="text-xs text-gray-400 font-normal">optional — upload a file or paste a link</span>
+          </label>
+          {uploadedVideoUrl ? (
+            <div className="flex items-center gap-3 p-3 bg-white border rounded-md">
+              <span className="text-sm text-green-600 font-medium">✓ Video uploaded</span>
+              <span className="text-xs text-gray-400 truncate flex-1">{uploadedVideoUrl}</span>
+              <button
+                type="button"
+                onClick={handleRemoveVideo}
+                className="text-xs text-red-500 hover:text-red-700 font-semibold"
+              >
+                Remove
+              </button>
+            </div>
+          ) : videoUrl.trim() ? (
+            <div className="flex items-center gap-3 p-3 bg-white border rounded-md">
+              <span className="text-sm text-blue-600 font-medium">✓ Video link added</span>
+              <span className="text-xs text-gray-400 truncate flex-1">{videoUrl}</span>
+              <button
+                type="button"
+                onClick={() => setVideoUrl("")}
+                className="text-xs text-red-500 hover:text-red-700 font-semibold"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div
+                onClick={() => videoFileInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
+              >
+                <input
+                  type="file"
+                  accept="video/*"
+                  ref={videoFileInputRef}
+                  className="hidden"
+                  onChange={handleVideoUpload}
+                />
+                {videoUploading ? (
+                  <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
+                ) : (
+                  <p className="text-sm text-gray-600">Click to upload a video file</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-px flex-1 bg-gray-200" />
+                <span className="text-xs text-gray-400">or</span>
+                <span className="h-px flex-1 bg-gray-200" />
+              </div>
+              <input
+                type="url"
+                value={videoUrl}
+                onChange={(e) => {
+                  setVideoUrl(e.target.value);
+                  if (uploadedVideoUrl) setUploadedVideoUrl("");
+                }}
+                placeholder="Paste a video URL (YouTube, Vimeo, MP4...)"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 text-sm"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3 pt-2">
           <Link
             href="/admin"
-            className="inline-flex items-center justify-center px-4 py-3 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
           >
             Cancel
           </Link>
-          <button
+          <Button
             type="submit"
             disabled={loading || uploading}
-            className="flex-1 bg-slate-900 hover:bg-black text-white font-medium py-3 px-4 rounded-md transition duration-150 disabled:bg-gray-400"
           >
-            {loading ? "Publishing product..." : "Publish Product"}
-          </button>
+            {loading ? "Saving..." : "Save Changes"}
+          </Button>
         </div>
       </form>
 
@@ -512,7 +571,7 @@ export default function NewProductPage() {
         </div>
       )}
 
-      {/* Feature Selection Modal — conditionally rendered so it gets fresh state on open */}
+      {/* Feature Modal */}
       {showFeatureModal && (
         <FeatureSelectionModal
           onClose={setShowFeatureModal}
