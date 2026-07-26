@@ -58,6 +58,56 @@ const schema = defineSchema({
     slug: v.string(),
   }).index("by_slug", ["slug"]),
 
+  addresses: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    street: v.string(),
+    city: v.string(),
+    state: v.string(),
+    zip: v.string(),
+    country: v.string(),
+    isDefault: v.boolean(),
+  }).index("by_user", ["userId"]),
+
+  orders: defineTable({
+    userId: v.id("users"),
+    items: v.array(
+      v.object({
+        productId: v.id("products"),
+        title: v.string(),
+        price: v.number(),
+        quantity: v.number(),
+        image: v.optional(v.string()),
+        selectedFeatures: v.optional(
+          v.array(
+            v.object({
+              type: v.string(),
+              label: v.string(),
+              value: v.string(),
+            })
+          )
+        ),
+      })
+    ),
+    total: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("shipped"),
+      v.literal("delivered"),
+      v.literal("cancelled")
+    ),
+    shippingAddress: v.object({
+      name: v.string(),
+      street: v.string(),
+      city: v.string(),
+      state: v.string(),
+      zip: v.string(),
+      country: v.string(),
+    }),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   cartItems: defineTable({
     userId: v.id("users"),
     productId: v.id("products"),

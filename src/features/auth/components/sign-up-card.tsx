@@ -7,19 +7,23 @@ import { FaFacebook } from "react-icons/fa";
 import { SignInFlow } from "../types";
 import { useRef, useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { Camera, TriangleAlert } from "lucide-react";
+import { Camera, TriangleAlert, ArrowLeft } from "lucide-react";
 import passwordValidator from "../password_validator";
 
 interface SignUpCardProps {
    setState: (state: SignInFlow) => void;
 }
 
+type Step = "signUp" | { email: string };
+
 export const SignUpCard = ({ setState }: SignUpCardProps) => {
    const { signIn } = useAuthActions();
+   const [step, setStep] = useState<Step>("signUp");
    const [error, setError] = useState("");
    const [email, setEmail] = useState("");
    const [password, setPassword] = useState("");
    const [confirmPassword, setConfirmPassword] = useState("");
+   const [code, setCode] = useState("");
    const [pending, setPending] = useState(false);
    const [name, setName] = useState("");
    const [image, setImage] = useState<string | undefined>(undefined);
@@ -52,41 +56,51 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
       return 'bg-green-500';                   // Excellent
    };
 
-   const onPasswordSignUp = (e: React.FormEvent<HTMLFormElement>) => {
-   e.preventDefault();
-   setError(""); // Clear any previous errors
+   const onPasswordSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      setError("");
 
-   if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-   }
-   
-   const passwordValidation = passwordValidator(password);
-   if (!passwordValidation.success) {
-      setError(passwordValidation.errorMessage || "Password validation failed");
-      return;
-   }
+      if (password !== confirmPassword) {
+         setError("Passwords do not match");
+         return;
+      }
+      
+      const passwordValidation = passwordValidator(password);
+      if (!passwordValidation.success) {
+         setError(passwordValidation.errorMessage || "Password validation failed");
+         return;
+      }
 
-   setPending(true);
-   signIn("password", { name, email, password, flow: "signUp" ,...(image ? { image } : {}) })
-      .catch((err: unknown) => {
-         // 1. Cast or verify the error is an Error object
+      setPending(true);
+      try {
+         await signIn("password", { name, email, password, flow: "signUp", ...(image ? { image } : {}) });
+         setStep({ email });
+      } catch (err: unknown) {
          if (err instanceof Error) {
-            // 2. Check if the error message contains the "already exists" string
             if (err.message.includes("already exists")) {
                setError("An account with this email already exists.");
             } else {
-               // Fallback for other server errors
                setError("Something went wrong. Please try again.");
             }
          } else {
-            // Fallback for mysterious errors
             setError("An unexpected error occurred.");
          }
-      })
-      .finally(() => {
+      } finally {
          setPending(false);
-      });
+      }
+   };
+
+   const onVerify = async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      setPending(true);
+      setError("");
+      try {
+         await signIn("password", { email: (step as { email: string }).email, code, flow: "email-verification" });
+      } catch {
+         setError("Invalid code. Please try again.");
+      } finally {
+         setPending(false);
+      }
    };
 
    const handleProviderSignUp = (value: "facebook" | "google") => {
@@ -94,6 +108,38 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
       signIn(value)
          .finally(() => setPending(false));
    };
+
+   if (typeof step === "object") {
+      return (
+         <Card className="w-full h-full p-8">
+            <CardHeader className="px-0 pt-0">
+               <CardTitle className="text-2xl font-semibold text-black">
+                  Check your email
+               </CardTitle>
+               <CardDescription>
+                  Enter the 8-digit code sent to {(step as { email: string }).email}
+               </CardDescription>
+            </CardHeader>
+            {!!error && (
+               <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive mb-6">
+                  <TriangleAlert className="size-4" />
+                  <p>{error}</p>
+               </div>
+            )}
+            <CardContent className="space-y-5 px-0 pb-0">
+               <form onSubmit={onVerify} className="space-y-2.5">
+                  <Input disabled={pending} value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter 8-digit code" required />
+                  <Button type="submit" className="w-full rounded-[7px]" size="lg" disabled={pending}>
+                     Verify Email
+                  </Button>
+               </form>
+               <Button variant="ghost" size="sm" onClick={() => setStep("signUp")} className="text-xs">
+                  <ArrowLeft className="size-3 mr-1" /> Back to sign up
+               </Button>
+            </CardContent>
+         </Card>
+      );
+   }
 
    return (
       <Card className="w-full h-full p-8">
