@@ -3,7 +3,7 @@ import { render } from "@react-email/components";
 import PasswordResetEmail from "./emails/PasswordResetEmail";
 import VerificationEmail from "./emails/VerificationEmail";
 
-const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+const RESEND_API_URL = "https://api.resend.com/emails";
 
 function generateToken() {
   const chars = "0123456789";
@@ -12,15 +12,7 @@ function generateToken() {
   return Array.from(array, (byte) => chars[byte % chars.length]).join("");
 }
 
-function parseFrom(from: string): { name: string; email: string } {
-  const match = from.match(/^(.+) <(.+)>$/);
-  if (match) {
-    return { name: match[1].trim(), email: match[2].trim() };
-  }
-  return { name: "", email: from.trim() };
-}
-
-async function sendEmailViaBrevo({
+async function sendEmailViaResend({
   from,
   to,
   subject,
@@ -33,43 +25,42 @@ async function sendEmailViaBrevo({
   html: string;
   text: string;
 }) {
-  const apiKey = process.env.BREVO_API_KEY;
-  if (!apiKey) throw new Error("BREVO_API_KEY is not set");
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY is not set");
 
-  const sender = parseFrom(from);
-  const res = await fetch(BREVO_API_URL, {
+  const res = await fetch(RESEND_API_URL, {
     method: "POST",
     headers: {
-      "api-key": apiKey,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      sender,
-      to: [{ email: to }],
+      from,
+      to,
       subject,
-      htmlContent: html,
-      textContent: text,
+      html,
+      text,
     }),
   });
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Brevo error (${res.status}): ${body}`);
+    throw new Error(`Resend error (${res.status}): ${body}`);
   }
 }
 
 const emailConfig = {
-  id: "brevo",
+  id: "resend",
   type: "email" as const,
-  name: "Brevo",
+  name: "Resend",
   server: {},
   from:
     process.env.AUTH_EMAIL_FROM ??
-    "AIJ Creations <aij.professionals.team@gmail.com>",
+    "AIJ Creations <support@aijteam.abrdns.com>",
   maxAge: 15 * 60,
 };
 
-export const BrevoOTPPasswordReset = {
+export const ResendOTPPasswordReset = {
   ...emailConfig,
   async generateVerificationToken() {
     return generateToken();
@@ -84,7 +75,7 @@ export const BrevoOTPPasswordReset = {
     const html = await render(
       React.createElement(PasswordResetEmail, { code: token })
     );
-    await sendEmailViaBrevo({
+    await sendEmailViaResend({
       from,
       to: email,
       subject: "Reset your password in AIJ Creations",
@@ -94,7 +85,7 @@ export const BrevoOTPPasswordReset = {
   },
 };
 
-export const BrevoOTPEmailVerification = {
+export const ResendOTPEmailVerification = {
   ...emailConfig,
   async generateVerificationToken() {
     return generateToken();
@@ -109,7 +100,7 @@ export const BrevoOTPEmailVerification = {
     const html = await render(
       React.createElement(VerificationEmail, { code: token })
     );
-    await sendEmailViaBrevo({
+    await sendEmailViaResend({
       from,
       to: email,
       subject: "Verify your email for AIJ Creations",

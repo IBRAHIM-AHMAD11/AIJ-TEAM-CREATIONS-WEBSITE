@@ -13,6 +13,7 @@ import type * as addresses from "../addresses.js";
 import type * as auth from "../auth.js";
 import type * as cart from "../cart.js";
 import type * as categories from "../categories.js";
+import type * as changePassword from "../changePassword.js";
 import type * as emails_PasswordResetEmail from "../emails/PasswordResetEmail.js";
 import type * as emails_VerificationEmail from "../emails/VerificationEmail.js";
 import type * as http from "../http.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   cart: typeof cart;
   categories: typeof categories;
+  changePassword: typeof changePassword;
   "emails/PasswordResetEmail": typeof emails_PasswordResetEmail;
   "emails/VerificationEmail": typeof emails_VerificationEmail;
   http: typeof http;
