@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Doc } from "../../../../convex/_generated/dataModel"
+import { Doc } from "../../../../convex/_generated/dataModel";
 import { useAtomValue, useSetAtom, useAtom } from "jotai";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,6 +10,7 @@ import { cartOpenAtom } from "@/features/cart/store";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown"; // 👈 NEW
 
 interface ProductGridProps {
   products: Doc<"products">[] | undefined;
@@ -19,8 +20,6 @@ interface ProductGridProps {
   onLoadMore: () => void;
   searchQuery?: string;
 }
-
-
 
 export default function ProductGrid({ products, isLoading, isLoadingMore, canLoadMore, onLoadMore, searchQuery: searchQueryProp }: ProductGridProps) {
   const selectedCategories = useAtomValue(selectedCategoriesAtom);
@@ -157,12 +156,23 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
                 </button>
               </div>
               <div className="p-4">
-                <h3 className="font-semibold text-gray-900 text-lg line-clamp-1 group-hover:text-blue-600 transition-colors">
+                <h3 className="font-semibold text-gray-900 text-lg line-clamp-1 group-hover:text-gray-600 transition-colors">
                   {product.title}
                 </h3>
-                <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                  {product.description}
-                </p>
+                {/* 👇 Markdown rendered description */}
+                <div className="text-sm text-gray-500 mt-1 line-clamp-2 prose prose-sm max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      a: ({ children, ...props }) => (
+                        <span className="text-gray-600 underline cursor-default">
+                          {children}
+                        </span>
+                      ),
+                    }}
+                  >
+                    {product.description}
+                  </ReactMarkdown>
+                </div>
               </div>
             </Link>
             <div className="p-4 pt-0 flex items-center justify-between mt-auto">
@@ -177,7 +187,8 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
                 </Link>
               ) : (
                 <Button
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                  variant="outline"
+                  className="text-white px-3 py-2 rounded text-sm font-medium transition-colors"
                   onClick={() => {
                     addToCart({ productId: product._id, quantity: 1 });
                     setCartOpen(true);

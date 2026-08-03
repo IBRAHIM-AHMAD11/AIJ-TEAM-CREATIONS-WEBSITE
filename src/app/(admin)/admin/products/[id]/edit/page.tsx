@@ -48,6 +48,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [newCatName, setNewCatName] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -190,6 +191,29 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     setFeatures((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
+  // Helper to insert markdown syntax at cursor position inside the modal editor
+  const insertMarkdown = (prefix: string, suffix: string = "") => {
+    const textarea = document.getElementById("markdown-editor") as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const before = text.substring(0, start);
+    const selection = text.substring(start, end);
+    const after = text.substring(end, text.length);
+
+    const newText = before + prefix + selection + suffix + after;
+    setDescription(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = start + prefix.length;
+      textarea.selectionEnd = start + prefix.length + selection.length;
+    }, 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product) return;
@@ -324,15 +348,25 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           </select>
         </div>
 
-        {/* Description */}
+        {/* Description – now with "Open Markdown Editor" button */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <button
+              type="button"
+              onClick={() => setShowDescriptionModal(true)}
+              className="text-xs font-semibold px-2 py-1 bg-gray-100 border rounded-md text-gray-700 hover:bg-gray-200 transition"
+            >
+              ⛶ Open Markdown Editor
+            </button>
+          </div>
           <textarea
             required
-            rows={3}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+            rows={4}
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 font-mono text-sm bg-gray-50"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            placeholder="Write a brief description or open the editor for formatting..."
           />
         </div>
 
@@ -567,6 +601,53 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md">Create</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Markdown Description Modal – added from the create page */}
+      {showDescriptionModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-4xl w-full h-[85vh] flex flex-col shadow-2xl border border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Product Description</h3>
+              <button 
+                type="button" 
+                onClick={() => setShowDescriptionModal(false)}
+                className="text-gray-400 hover:text-gray-700 transition font-bold text-xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Toolbar */}
+            <div className="flex flex-wrap gap-2 mb-3 pb-3 border-b border-gray-100">
+              <button type="button" onClick={() => insertMarkdown("**", "**")} className="px-3 py-1.5 text-sm font-semibold bg-gray-100 hover:bg-gray-200 rounded text-gray-700">Bold</button>
+              <button type="button" onClick={() => insertMarkdown("*", "*")} className="px-3 py-1.5 text-sm italic bg-gray-100 hover:bg-gray-200 rounded text-gray-700">Italic</button>
+              <button type="button" onClick={() => insertMarkdown("# ", "")} className="px-3 py-1.5 text-sm font-bold bg-gray-100 hover:bg-gray-200 rounded text-gray-700">H1</button>
+              <button type="button" onClick={() => insertMarkdown("## ", "")} className="px-3 py-1.5 text-sm font-bold bg-gray-100 hover:bg-gray-200 rounded text-gray-700">H2</button>
+              <button type="button" onClick={() => insertMarkdown("- ", "")} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded text-gray-700">• List</button>
+              <button type="button" onClick={() => insertMarkdown("[Link Text](https://", ")")} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded text-gray-700">🔗 Link</button>
+            </div>
+
+            {/* Editor Area */}
+            <textarea
+              id="markdown-editor"
+              className="flex-1 w-full rounded-md border border-gray-300 p-4 text-gray-900 font-mono text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Write your product description here using Markdown..."
+            />
+
+            <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
+              <button 
+                type="button" 
+                onClick={() => setShowDescriptionModal(false)} 
+                className="px-6 py-2 bg-slate-900 text-white font-medium rounded-md hover:bg-black transition"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

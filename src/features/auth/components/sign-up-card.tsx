@@ -232,10 +232,11 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
                               ref={fileInputRef} 
                               onChange={handleImageChange}
                               disabled={pending}
+
                            />
                            <div 
                               onClick={() => fileInputRef.current?.click()}
-                              className="group relative size-24 rounded-full border border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition hover:border-orange-400 hover:bg-gray-100"
+                              className="group relative size-24 rounded-full border border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition hover:border-yellow-400 hover:bg-gray-100"
                            >
                               {imagePreview ? (
                                  <img 
@@ -244,7 +245,7 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
                                     className="size-full object-cover"
                                  />
                               ) : (
-                                 <div className="flex flex-col items-center text-muted-foreground group-hover:text-orange-400">
+                                 <div className="flex flex-col items-center text-muted-foreground group-hover:text-yellow-400">
                                     <Camera className="size-5 mb-1" />
                                     <span className="text-[10px] font-medium">Avatar</span>
                                  </div>
@@ -286,11 +287,11 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
                      <Separator />
                      
                      <div className="flex flex-col gap-y-2.5">
-                        <Button disabled={pending} className="w-full relative" variant="outline" size="lg" onClick={() => {handleProviderSignUp("google")}}>
+                        <Button disabled={pending} className="w-full relative bg-background hover:bg-muted" variant="outline" size="lg" onClick={() => {handleProviderSignUp("google")}}>
                            <FcGoogle className="size-5 absolute left-2.5 top-3" />
                            Continue with Google
                         </Button>
-                         <Button disabled={pending} className="w-full relative" variant="outline" size="lg" onClick={() => {handleProviderSignUp("facebook")}}>
+                         <Button disabled={pending} className="w-full relative bg-background hover:bg-muted" variant="outline" size="lg" onClick={() => {handleProviderSignUp("facebook")}}>
                             <FaFacebook className="size-5 absolute left-2.5 top-3" />
                             Continue with Facebook
                          </Button>
@@ -298,7 +299,7 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
                      
                      <p className="text-sm text-center text-muted-foreground">
                         Already have an account?{" "}
-                        <span onClick={() => setState("signIn")} className="text-orange-400 hover:underline cursor-pointer">Sign In</span>
+                        <span onClick={() => setState("signIn")} className="text-yellow-600 hover:underline cursor-pointer">Sign In</span>
                      </p>
                   </CardContent>
                </motion.div>

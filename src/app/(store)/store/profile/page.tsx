@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { buttonVariants } from "@/components/ui/button";
 
 function maskEmail(email: string): string {
   const [name, domain] = email.split("@");
@@ -177,7 +178,7 @@ const ProfilePage = () => {
             </Button>
 
             <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
-              <DialogTrigger>
+              <DialogTrigger className={buttonVariants({ variant: "outline" })}>
                 <Button variant="outline">
                   <KeyRound className="size-4 mr-2" />
                   Change Password

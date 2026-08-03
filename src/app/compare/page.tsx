@@ -9,6 +9,7 @@ import Breadcrumbs from "@/components/ui/breadcrumbs";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown"; // 👈 NEW
 
 export default function ComparePage() {
   const [compareIds] = useAtom(compareIdsAtom);
@@ -72,10 +73,15 @@ export default function ComparePage() {
             </tr>
           </thead>
           <tbody>
+            {/* 👇 Description row – markdown rendered */}
             <tr className="border-t border-slate-200">
               <td className="text-sm font-semibold text-slate-500 p-3">Description</td>
               {products.map((p) => (
-                <td key={p._id} className="text-sm text-slate-600 p-3">{p.description}</td>
+                <td key={p._id} className="text-sm text-slate-600 p-3">
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown>{p.description}</ReactMarkdown>
+                  </div>
+                </td>
               ))}
             </tr>
             <tr className="border-t border-slate-200">

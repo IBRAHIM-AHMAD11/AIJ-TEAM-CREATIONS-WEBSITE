@@ -31,6 +31,7 @@ const schema = defineSchema({
     isActive: v.boolean(), 
     createdAt: v.number(),
     video: v.optional(v.string()),
+    model3d: v.optional(v.string()),
     features: v.optional(
       v.array(
         v.object({

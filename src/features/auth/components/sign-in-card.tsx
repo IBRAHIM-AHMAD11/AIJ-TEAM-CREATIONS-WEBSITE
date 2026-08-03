@@ -186,12 +186,12 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
                      </form>
                      <Separator />
                      <div className="flex flex-col gap-y-2.5">
-                        <Button disabled={pending} className="w-full relative" variant="outline" size="lg" onClick={() => {handleProviderSignIn("google")}}
+                        <Button disabled={pending} className="w-full relative bg-background hover:bg-muted" variant="outline" size="lg" onClick={() => {handleProviderSignIn("google")}}
                         >
                            <FcGoogle className="size-5 absolute left-2.5 top-3" />
                            Continue with Google
                         </Button>
-                        <Button disabled={pending} className="w-full relative" variant="outline" size="lg" onClick={() => {handleProviderSignIn("facebook")}}
+                        <Button disabled={pending} className="w-full relative bg-background hover:bg-muted" variant="outline" size="lg" onClick={() => {handleProviderSignIn("facebook")}}
                         >
                            <FaFacebook className="size-5 absolute left-2.5 top-3" />
                            Continue with Facebook
@@ -199,7 +199,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
                      </div>
                      <p className="text-sm text-center text-muted-foreground">
                         Don&apos;t have an account?{" "}
-                        <span onClick={() => setState("signUp")} className="text-orange-400 hover:underline cursor-pointer"
+                        <span onClick={() => setState("signUp")} className="text-yellow-600 hover:underline cursor-pointer"
                         >Sign Up</span>
                      </p>
                   </CardContent>

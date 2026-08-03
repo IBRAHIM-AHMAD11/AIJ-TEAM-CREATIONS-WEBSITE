@@ -24,6 +24,7 @@ export const createProduct = mutation({
     images: v.array(v.string()),
     isActive: v.boolean(),
     video: v.optional(v.string()),
+    model3d: v.optional(v.string()),
     features: v.optional(
       v.array(
         v.object({
@@ -90,6 +91,17 @@ export const deleteProduct = mutation({
       }
     }
 
+    if (product.model3d) {
+      const storageId = extractStorageId(product.model3d);
+      if (storageId) {
+        try {
+          await ctx.storage.delete(storageId as any);
+        } catch (err) {
+          console.error("Failed to delete 3D model storage asset:", err);
+        }
+      }
+    }
+
     // Delete the product document from the database
     await ctx.db.delete(args.id);
   },
@@ -107,6 +119,7 @@ export const updateProduct = mutation({
     images: v.array(v.string()),
     isActive: v.boolean(),
     video: v.optional(v.string()),
+    model3d: v.optional(v.string()),
     features: v.optional(
       v.array(
         v.object({
@@ -187,4 +200,8 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique(); // Returns the product or null if not found
   },
+});
+
+export const generateUploadUrl = mutation(async (ctx) => {
+  return await ctx.storage.generateUploadUrl();
 });

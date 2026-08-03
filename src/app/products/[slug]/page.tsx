@@ -14,6 +14,8 @@ import Breadcrumbs from "@/components/ui/breadcrumbs";
 import ImageLightbox from "@/components/ui/image-lightbox";
 import RelatedProducts from "./relatedProducts";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import ReactMarkdown from "react-markdown"; // 👈 NEW
+import dynamic from "next/dynamic"; // 👈 NEW for 3D viewer
 import {
   ShieldCheck, 
   RotateCcw, 
@@ -31,7 +33,7 @@ interface ProductPageProps {
 }
 
 interface MediaItem {
-  type: "image" | "video";
+  type: "image" | "video" | "model";
   url: string;
 }
 
@@ -54,6 +56,8 @@ function computeEffectivePrice(
   if (selectedFinish) total += findAdj("finish", selectedFinish);
   return Math.max(0, total);
 }
+
+const ModelViewer = dynamic(() => import("@/components/ModelViewer"), { ssr: false });
 
 export default function ProductPage({ params }: ProductPageProps) {
   const { slug } = use(params);
@@ -160,6 +164,12 @@ export default function ProductPage({ params }: ProductPageProps) {
       url: product.video,
     });
   }
+  if (product.model3d && product.model3d.trim() !== "") {
+    mediaItems.push({
+      type: "model",
+      url: product.model3d,
+    });
+  }
 
   const activeMedia = mediaItems[activeMediaIndex];
 
@@ -210,6 +220,11 @@ export default function ProductPage({ params }: ProductPageProps) {
                       <span className="text-[9px] font-bold uppercase tracking-wider bg-primary text-primary-foreground px-1 py-0.5 rounded-xs absolute top-1 left-1 scale-75 origin-top-left">Video</span>
                       <Play className="size-5 text-primary fill-current" />
                     </div>
+                  ) : item.type === "model" ? (                       // 👈 NEW
+                    <div className="relative w-full h-full flex items-center justify-center bg-zinc-900 text-white">
+                      <span className="text-[9px] font-bold uppercase tracking-wider bg-blue-600 text-white px-1 py-0.5 rounded-xs absolute top-1 left-1 scale-75 origin-top-left">3D</span>
+                      <svg className="size-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+                    </div>
                   ) : (
                     <Image src={item.url} alt={`${product.title} thumbnail ${index + 1}`} fill className="object-cover" sizes="80px" />
                   )}
@@ -220,7 +235,8 @@ export default function ProductPage({ params }: ProductPageProps) {
             <div ref={containerRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} className="relative aspect-square w-full rounded-xl border border-border bg-card overflow-hidden shadow-xs">
               {activeMedia.type === "video" ? (
                 <video src={activeMedia.url} controls autoPlay muted className="w-full h-full object-contain bg-black" />
-              ) : (
+              ): activeMedia.type === "model" ? (   // 👈 NEW
+    <ModelViewer src={activeMedia.url} />) : (
                 <button
                   type="button"
                   onClick={() => setLightboxOpen(true)}
@@ -396,10 +412,12 @@ export default function ProductPage({ params }: ProductPageProps) {
               )}
             </div>
 
-            {/* Description & Footer */}
+            {/* 👇 MARKDOWN DESCRIPTION – CHANGED */}
             <div className="space-y-2">
               <h3 className="font-semibold text-foreground text-sm uppercase tracking-wider">About this item</h3>
-              <p className="text-muted-foreground leading-relaxed text-sm">{product.description}</p>
+              <div className="text-muted-foreground leading-relaxed text-sm prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown>{product.description}</ReactMarkdown>
+              </div>
             </div>
 
             <div className="border border-border rounded-xl p-6 bg-muted/30 dark:bg-muted/10 space-y-4">

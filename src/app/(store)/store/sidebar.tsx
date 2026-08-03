@@ -12,7 +12,9 @@ import {
   SidebarHeader,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel
+  SidebarGroupLabel,
+  SidebarTrigger,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import { 
   Accordion, 
@@ -51,40 +53,41 @@ export default function Sidebar() {
   };
 
   return (
-    <ShadcnSidebar className="border-r border-slate-100 bg-[#FCFCFC]">
-      {/* 1. Header Area */}
-      <SidebarHeader className="p-4 border-b border-slate-100">
+    <ShadcnSidebar className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      {/* 1. Header Area with Collapsible Trigger Button */}
+      <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-extrabold text-sm text-slate-900 tracking-tight">AIJ TEAM Creations</span>
-          </div>
+          <span className="font-extrabold text-lg text-sidebar-foreground tracking-tight underline decoration-sidebar-primary decoration-2 underline-offset-4 group-data-[collapsible=icon]:hidden">
+            AIJ TEAM Creations
+          </span>
+          <SidebarTrigger className="hover:bg-sidebar-accent text-sidebar-foreground" />
         </div>
       </SidebarHeader>
 
       {/* 2. Scrollable Body Content */}
-      <SidebarContent>
+      <SidebarContent className="bg-sidebar">
         <ScrollArea className="h-full px-4 py-3">
           <SidebarGroup className="p-0">
-            <SidebarGroupLabel className="flex items-center gap-1.5 px-0 text-xs font-bold text-slate-400 uppercase tracking-wider h-auto mb-4">
-              <Filter className="h-3 w-3" />
+            <SidebarGroupLabel className="flex items-center gap-1.5 px-0 text-xs font-bold text-sidebar-foreground/60 uppercase tracking-wider h-auto mb-4 group-data-[collapsible=icon]:hidden">
+              <Filter className="h-3.5 w-3.5" />
               <span>Active Filters</span>
             </SidebarGroupLabel>
             
             <SidebarGroupContent>
-               {/* @ts-expect-error – shadcn Accordion accepts type="multiple" */}
+              {/* @ts-expect-error – shadcn Accordion accepts type="multiple" */}
               <Accordion type="multiple" defaultValue={["categories", "status"]} className="w-full">
                 
                 {/* Categories Group */}
                 <AccordionItem value="categories" className="border-none">
-                  <AccordionTrigger className="hover:no-underline py-2 text-sm font-semibold text-slate-700">
+                  <AccordionTrigger className="hover:no-underline py-2 text-sm font-semibold text-sidebar-foreground">
                     <div className="flex items-center gap-2">
-                      <Layers className="h-4 w-4 text-slate-400" />
-                      <span>Categories</span>
+                      <Layers className="h-4 w-4 text-sidebar-foreground/70" />
+                      <span className="group-data-[collapsible=icon]:hidden">Categories</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pt-1 pb-3 space-y-3">
+                  <AccordionContent className="pt-1 pb-3 space-y-3 group-data-[collapsible=icon]:hidden">
                     {categories.length === 0 ? (
-                      <p className="text-xs text-slate-400 italic pl-6 py-1">No categories found.</p>
+                      <p className="text-xs text-sidebar-foreground/50 italic pl-6 py-1">No categories found.</p>
                     ) : (
                       <div className="space-y-2.5 pl-1">
                         {categories.map((category) => (
@@ -93,11 +96,11 @@ export default function Sidebar() {
                               id={category._id}
                               checked={selectedCategories.includes(category._id)}
                               onCheckedChange={() => handleCategoryToggle(category._id)}
-                              className="h-4 w-4 rounded border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900"
+                              className="h-4 w-4 rounded border-sidebar-border data-[state=checked]:bg-sidebar-primary data-[state=checked]:text-sidebar-primary-foreground data-[state=checked]:border-sidebar-primary"
                             />
                             <label
                               htmlFor={category._id}
-                              className="text-xs font-medium text-slate-600 cursor-pointer select-none leading-none"
+                              className="text-xs font-medium text-sidebar-foreground cursor-pointer select-none leading-none"
                             >
                               {category.name}
                             </label>
@@ -108,27 +111,27 @@ export default function Sidebar() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <Separator className="my-2 bg-slate-100" />
+                <Separator className="my-2 bg-sidebar-border" />
 
                 {/* Stock Availability Group */}
                 <AccordionItem value="status" className="border-none">
-                  <AccordionTrigger className="hover:no-underline py-2 text-sm font-semibold text-slate-700">
+                  <AccordionTrigger className="hover:no-underline py-2 text-sm font-semibold text-sidebar-foreground">
                     <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-slate-400" />
-                      <span>Availability</span>
+                      <Package className="h-4 w-4 text-sidebar-foreground/70" />
+                      <span className="group-data-[collapsible=icon]:hidden">Availability</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pt-1 pb-2 space-y-3 pl-1">
+                  <AccordionContent className="pt-1 pb-2 space-y-3 pl-1 group-data-[collapsible=icon]:hidden">
                     <div className="flex items-center space-x-2.5">
                       <Checkbox
                         id="in-stock"
                         checked={stockOnly}
                         onCheckedChange={(checked) => setStockOnly(!!checked)}
-                        className="h-4 w-4 rounded border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900"
+                        className="h-4 w-4 rounded border-sidebar-border data-[state=checked]:bg-sidebar-primary data-[state=checked]:text-sidebar-primary-foreground data-[state=checked]:border-sidebar-primary"
                       />
                       <label
                         htmlFor="in-stock"
-                        className="text-xs font-medium text-slate-600 cursor-pointer select-none"
+                        className="text-xs font-medium text-sidebar-foreground cursor-pointer select-none"
                       >
                         In Stock Only
                       </label>
@@ -136,17 +139,17 @@ export default function Sidebar() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <Separator className="my-2 bg-slate-100" />
+                <Separator className="my-2 bg-sidebar-border" />
 
                 {/* Sort Group */}
                 <AccordionItem value="sort" className="border-none">
-                  <AccordionTrigger className="hover:no-underline py-2 text-sm font-semibold text-slate-700">
+                  <AccordionTrigger className="hover:no-underline py-2 text-sm font-semibold text-sidebar-foreground">
                     <div className="flex items-center gap-2">
-                      <ArrowUpDown className="h-4 w-4 text-slate-400" />
-                      <span>Sort By</span>
+                      <ArrowUpDown className="h-4 w-4 text-sidebar-foreground/70" />
+                      <span className="group-data-[collapsible=icon]:hidden">Sort By</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pt-1 pb-2 space-y-1 pl-1">
+                  <AccordionContent className="pt-1 pb-2 space-y-1 pl-1 group-data-[collapsible=icon]:hidden">
                     {sortOptions.map((option) => (
                       <button
                         key={option.value}
@@ -154,8 +157,8 @@ export default function Sidebar() {
                         onClick={() => setSortBy(option.value)}
                         className={`w-full text-left px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                           sortBy === option.value
-                            ? "bg-slate-900 text-white"
-                            : "text-slate-600 hover:bg-slate-100"
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold"
+                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent"
                         }`}
                       >
                         {option.label}
@@ -171,11 +174,13 @@ export default function Sidebar() {
       </SidebarContent>
 
       {/* 3. Footer Area */}
-      <SidebarFooter className="p-4 border-t border-slate-100 bg-[#F9FAFB] flex flex-row items-center justify-between">
+      <SidebarFooter className="p-4 border-t border-sidebar-border bg-sidebar-accent flex flex-row items-center justify-between">
         <div className="flex items-center gap-2.5">
           <UserButton />
         </div>
       </SidebarFooter>
+
+      <SidebarRail />
     </ShadcnSidebar>
   );
 }

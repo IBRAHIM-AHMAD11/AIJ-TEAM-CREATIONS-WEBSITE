@@ -50,10 +50,16 @@ export default function NewProductPage() {
   const [videoUploading, setVideoUploading] = useState(false);
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState("");
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  
+  // 👇 NEW: 3D Model state
+  const [uploadedModelUrl, setUploadedModelUrl] = useState("");
+  const [modelUploading, setModelUploading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
+  const modelFileInputRef = useRef<HTMLInputElement>(null); // 👈 NEW
 
   const convertToSlug = (text: string) => {
     return text
@@ -124,7 +130,7 @@ export default function NewProductPage() {
       const videoUrl = await getImageUrl({ storageId });
       if (videoUrl) {
         setUploadedVideoUrl(videoUrl);
-        setVideoUrl(""); // clear URL input when file uploaded
+        setVideoUrl(""); 
       }
       toast.success("Video added");
     } catch (err) {
@@ -137,6 +143,48 @@ export default function NewProductPage() {
   const handleRemoveVideo = () => {
     setUploadedVideoUrl("");
   };
+
+  // 👇 NEW: 3D model upload handler
+const handleModelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setModelUploading(true);
+    try {
+      const postUrl = await generateUploadUrl();
+      
+      // Only set Content-Type if the browser gives one
+      const headers: Record<string, string> = {};
+      if (file.type) {
+        headers["Content-Type"] = file.type;
+      }
+
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers,
+        body: file,
+      });
+
+      if (!result.ok) throw new Error("Upload failed");
+      const { storageId } = await result.json();
+
+      // ✅ Use the same method as images/videos
+      const modelUrl = await getImageUrl({ storageId });
+      if (modelUrl) {
+        setUploadedModelUrl(modelUrl);
+      }
+      toast.success("3D model added");
+    } catch (err) {
+      toast.error("Failed to upload 3D model.");
+    } finally {
+      setModelUploading(false);
+    }
+  };
+
+  const handleRemoveModel = () => {
+    setUploadedModelUrl("");
+  };
+  // 👆 END NEW
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,9 +210,33 @@ export default function NewProductPage() {
     setFeatures((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
+  // Helper to insert markdown syntax at cursor position
+  const insertMarkdown = (prefix: string, suffix: string = "") => {
+    const textarea = document.getElementById("markdown-editor") as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const before = text.substring(0, start);
+    const selection = text.substring(start, end);
+    const after = text.substring(end, text.length);
+
+    const newText = before + prefix + selection + suffix + after;
+    setDescription(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = start + prefix.length;
+      textarea.selectionEnd = start + prefix.length + selection.length;
+    }, 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryId) return toast.message("Please select or create a category first!");
+    if (!description.trim()) return toast.error("A product description is required.");
 
     const priceInCents = Math.round(parseFloat(priceInput) * 100);
 
@@ -172,7 +244,6 @@ export default function NewProductPage() {
       return toast.error("Please enter a valid base price.");
     }
 
-    // Price verifier: ensure no combination can result in a negative price
     const negativeSum = features
       .filter((f) => f.priceAdjustment !== undefined && f.priceAdjustment < 0)
       .reduce((sum, f) => sum + (f.priceAdjustment ?? 0), 0);
@@ -197,6 +268,7 @@ export default function NewProductPage() {
         video: (uploadedVideoUrl || videoUrl).trim() || undefined,
         features, 
         isActive: true,
+        model3d: uploadedModelUrl || undefined, // 👈 NEW
       });
 
       toast.success("Product successfully created!");
@@ -268,15 +340,25 @@ export default function NewProductPage() {
           </select>
         </div>
 
-        {/* Description */}
+        {/* Description - Expanded to launch modal */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <button
+              type="button"
+              onClick={() => setShowDescriptionModal(true)}
+              className="text-xs font-semibold px-2 py-1 bg-gray-100 border rounded-md text-gray-700 hover:bg-gray-200 transition"
+            >
+              ⛶ Open Markdown Editor
+            </button>
+          </div>
           <textarea
             required
-            rows={3}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+            rows={4}
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 font-mono text-sm bg-gray-50"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            placeholder="Write a brief description or open the editor for formatting..."
           />
         </div>
 
@@ -365,7 +447,6 @@ export default function NewProductPage() {
               Product Images <span className="text-xs text-gray-400 font-normal">(upload one at a time)</span>
             </label>
             
-            {/* Image grid */}
             {uploadedImages.length > 0 && (
               <div className="flex flex-wrap gap-3 mb-3">
                 {uploadedImages.map((url, index) => (
@@ -402,7 +483,7 @@ export default function NewProductPage() {
             </div>
           </div>
 
-          {/* Video — upload file OR paste URL (only one) */}
+          {/* Video */}
           <div className="p-4 border rounded-md bg-gray-50">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Product Video <span className="text-xs text-gray-400 font-normal">optional — upload a file or paste a link</span>
@@ -461,7 +542,7 @@ export default function NewProductPage() {
                   value={videoUrl}
                   onChange={(e) => {
                     setVideoUrl(e.target.value);
-                    if (uploadedVideoUrl) setUploadedVideoUrl(""); // clear uploaded file when URL entered
+                    if (uploadedVideoUrl) setUploadedVideoUrl(""); 
                   }}
                   placeholder="Paste a video URL (YouTube, Vimeo, MP4...)"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 text-sm"
@@ -469,6 +550,46 @@ export default function NewProductPage() {
               </div>
             )}
           </div>
+
+          {/* 👇 NEW: 3D Model Upload Section */}
+          <div className="p-4 border rounded-md bg-gray-50">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              3D Model <span className="text-xs text-gray-400 font-normal">optional — upload a .glb file</span>
+            </label>
+
+            {uploadedModelUrl ? (
+              <div className="flex items-center gap-3 p-3 bg-white border rounded-md">
+                <span className="text-sm text-green-600 font-medium">✓ 3D model uploaded</span>
+                <span className="text-xs text-gray-400 truncate flex-1">{uploadedModelUrl}</span>
+                <button
+                  type="button"
+                  onClick={handleRemoveModel}
+                  className="text-xs text-red-500 hover:text-red-700 font-semibold"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => modelFileInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
+              >
+                <input
+                  type="file"
+                  accept=".glb"
+                  ref={modelFileInputRef}
+                  className="hidden"
+                  onChange={handleModelUpload}
+                />
+                {modelUploading ? (
+                  <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
+                ) : (
+                  <p className="text-sm text-gray-600">Click to upload a .glb 3D model</p>
+                )}
+              </div>
+            )}
+          </div>
+          {/* 👆 END NEW */}
         </div>
 
         <div className="flex items-center gap-3">
@@ -490,7 +611,7 @@ export default function NewProductPage() {
 
       {/* Category Modal */}
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-lg border">
             <h3 className="text-lg font-bold text-gray-950 mb-4">New Category</h3>
             <form onSubmit={handleAddCategory} className="space-y-4">
@@ -512,7 +633,54 @@ export default function NewProductPage() {
         </div>
       )}
 
-      {/* Feature Selection Modal — conditionally rendered so it gets fresh state on open */}
+      {/* NEW: Markdown Description Modal */}
+      {showDescriptionModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-4xl w-full h-[85vh] flex flex-col shadow-2xl border border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Product Description</h3>
+              <button 
+                type="button" 
+                onClick={() => setShowDescriptionModal(false)}
+                className="text-gray-400 hover:text-gray-700 transition font-bold text-xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Toolbar */}
+            <div className="flex flex-wrap gap-2 mb-3 pb-3 border-b border-gray-100">
+              <button type="button" onClick={() => insertMarkdown("**", "**")} className="px-3 py-1.5 text-sm font-semibold bg-gray-100 hover:bg-gray-200 rounded text-gray-700">Bold</button>
+              <button type="button" onClick={() => insertMarkdown("*", "*")} className="px-3 py-1.5 text-sm italic bg-gray-100 hover:bg-gray-200 rounded text-gray-700">Italic</button>
+              <button type="button" onClick={() => insertMarkdown("# ", "")} className="px-3 py-1.5 text-sm font-bold bg-gray-100 hover:bg-gray-200 rounded text-gray-700">H1</button>
+              <button type="button" onClick={() => insertMarkdown("## ", "")} className="px-3 py-1.5 text-sm font-bold bg-gray-100 hover:bg-gray-200 rounded text-gray-700">H2</button>
+              <button type="button" onClick={() => insertMarkdown("- ", "")} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded text-gray-700">• List</button>
+              <button type="button" onClick={() => insertMarkdown("[Link Text](https://", ")")} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded text-gray-700">🔗 Link</button>
+            </div>
+
+            {/* Editor Area */}
+            <textarea
+              id="markdown-editor"
+              className="flex-1 w-full rounded-md border border-gray-300 p-4 text-gray-900 font-mono text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Write your product description here using Markdown..."
+            />
+
+            <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
+              <button 
+                type="button" 
+                onClick={() => setShowDescriptionModal(false)} 
+                className="px-6 py-2 bg-slate-900 text-white font-medium rounded-md hover:bg-black transition"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feature Selection Modal */}
       {showFeatureModal && (
         <FeatureSelectionModal
           onClose={setShowFeatureModal}

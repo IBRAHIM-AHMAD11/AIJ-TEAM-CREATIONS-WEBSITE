@@ -193,7 +193,7 @@ const AddressesPage = () => {
                 required
               />
               <Input
-                placeholder="State"
+                placeholder="Province"
                 value={form.state}
                 onChange={(e) => setForm({ ...form, state: e.target.value })}
                 required
