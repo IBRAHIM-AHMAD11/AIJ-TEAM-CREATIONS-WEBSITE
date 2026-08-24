@@ -33,7 +33,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
       setPending(true);
       setError("");
       try {
-         await signIn("password", { email, password, flow: "signIn"});
+         await signIn("password", { email, password, flow: "signIn", redirectTo: "/store"});
          setStep({ email });
       } catch {
          setError("Invalid email or password");
@@ -59,7 +59,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
 
    const handleProviderSignIn = (value: "facebook" | "google") => {
       setPending(true);
-      signIn(value)
+      signIn(value, {redirectTo: "/store"})
          .finally(() => setPending(false));
    }
 

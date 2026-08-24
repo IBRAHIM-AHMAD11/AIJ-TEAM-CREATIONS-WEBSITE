@@ -1,25 +1,31 @@
-import { convexAuthNextjsMiddleware, createRouteMatcher, nextjsMiddlewareRedirect } from "@convex-dev/auth/nextjs/server";
+import {
+  convexAuthNextjsMiddleware,
+  createRouteMatcher,
+  nextjsMiddlewareRedirect,
+} from "@convex-dev/auth/nextjs/server";
 
-const isPublicPage = createRouteMatcher([
-  "/auth",
-  "/"
-]);
+// Publicly accessible pages (anyone can visit)
+const isPublicPage = createRouteMatcher(["/", "/auth"]);
 
-// Next.js 16 expects a named export function called 'proxy'
+// Pages reserved for non-authenticated users
+const isAuthPage = createRouteMatcher(["/auth"]);
+
 export async function proxy(request: any, event: any) {
-  // We wrap the Convex middleware runner and pass the arguments through
   return convexAuthNextjsMiddleware(async (req, { convexAuth }) => {
-    if (!isPublicPage(req) && !(await convexAuth.isAuthenticated())) {
+    const isAuthenticated = await convexAuth.isAuthenticated();
+
+    // 1. Unauthenticated users accessing private routes (like /store) -> redirect to /auth
+    if (!isPublicPage(req) && !isAuthenticated) {
       return nextjsMiddlewareRedirect(req, "/auth");
     }
-    if (isPublicPage(req) && (await convexAuth.isAuthenticated())) {
+
+    // 2. Authenticated users landing on /auth -> redirect to /store
+    if (isAuthPage(req) && isAuthenticated) {
       return nextjsMiddlewareRedirect(req, "/store");
     }
-    
   })(request, event);
 }
 
 export const config = {
-  // The matcher runs proxy logic on all routes except static assets.
   matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
 };

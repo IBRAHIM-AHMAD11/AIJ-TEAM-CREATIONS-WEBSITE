@@ -71,7 +71,7 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
 
       setPending(true);
       try {
-         await signIn("password", { name, email, password, flow: "signUp", ...(image ? { image } : {}) });
+         await signIn("password", { name, email, password, flow: "signUp", redirectTo: "/store", ...(image ? { image } : {}) });
          setStep({ email });
       } catch (err: unknown) {
          if (err instanceof Error) {
@@ -105,7 +105,7 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
 
    const handleProviderSignUp = (value: "facebook" | "google") => {
       setPending(true);
-      signIn(value)
+      signIn(value, {redirectTo: "/store"})
          .finally(() => setPending(false));
    };
 

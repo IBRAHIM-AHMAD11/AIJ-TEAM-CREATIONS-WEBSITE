@@ -178,11 +178,9 @@ const ProfilePage = () => {
             </Button>
 
             <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
-              <DialogTrigger className={buttonVariants({ variant: "outline" })}>
-                <Button variant="outline">
+              <DialogTrigger render={<Button variant={"outline"} />} className={buttonVariants({ variant: "outline" })}>
                   <KeyRound className="size-4 mr-2" />
                   Change Password
-                </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
