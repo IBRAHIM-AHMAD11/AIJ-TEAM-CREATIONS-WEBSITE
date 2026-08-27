@@ -191,11 +191,11 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
                            <FcGoogle className="size-5 absolute left-2.5 top-3" />
                            Continue with Google
                         </Button>
-                        <Button disabled={pending} className="w-full relative bg-background hover:bg-muted" variant="outline" size="lg" onClick={() => {handleProviderSignIn("facebook")}}
+                        {/* <Button disabled={pending} className="w-full relative bg-background hover:bg-muted" variant="outline" size="lg" onClick={() => {handleProviderSignIn("facebook")}}
                         >
                            <FaFacebook className="size-5 absolute left-2.5 top-3" />
                            Continue with Facebook
-                        </Button>
+                        </Button> */}
                      </div>
                      <p className="text-sm text-center text-muted-foreground">
                         Don&apos;t have an account?{" "}
