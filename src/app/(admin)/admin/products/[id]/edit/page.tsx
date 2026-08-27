@@ -10,7 +10,6 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { FeatureSelectionModal } from "../../../FeatureSelectionModal";
-import { upscaleImage } from "@/lib/upscaleImage";
 
 type FeatureType = "color" | "size" | "material" | "dimension" | "finish" | "custom";
 
@@ -107,12 +106,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
     setUploading(true);
     try {
-      const processed = await upscaleImage(file);
       const postUrl = await generateUploadUrl();
       const result = await fetch(postUrl, {
         method: "POST",
-        headers: { "Content-Type": processed.type },
-        body: processed,
+        headers: { "Content-Type": file.type },
+        body: file,
       });
 
       if (!result.ok) throw new Error("Upload failed");

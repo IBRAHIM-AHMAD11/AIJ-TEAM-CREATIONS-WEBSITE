@@ -23,6 +23,8 @@ export async function proxy(request: any, event: any) {
     if (isAuthPage(req) && isAuthenticated) {
       return nextjsMiddlewareRedirect(req, "/store");
     }
+
+    // Admin role checks are handled by the admin layout using the current user query.
   })(request, event);
 }
 

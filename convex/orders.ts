@@ -28,6 +28,7 @@ export const getById = query({
 
 export const create = mutation({
   args: {
+    checkoutSessionId: v.optional(v.id("checkoutSessions")),
     items: v.array(
       v.object({
         productId: v.id("products"),
@@ -46,6 +47,10 @@ export const create = mutation({
         ),
       })
     ),
+    subtotal: v.number(),
+    shippingCost: v.number(),
+    taxTotal: v.number(),
+    discountTotal: v.optional(v.number()),
     total: v.number(),
     shippingAddress: v.object({
       name: v.string(),
@@ -54,16 +59,32 @@ export const create = mutation({
       state: v.string(),
       zip: v.string(),
       country: v.string(),
+      phone: v.optional(v.string()),
     }),
+    paymentMethod: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
+
+    // Generate a unique order identifier (e.g., ORD-1717000000000-42)
+    const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
     return await ctx.db.insert("orders", {
       userId,
+      checkoutSessionId: args.checkoutSessionId,
+      orderNumber,
       items: args.items,
+      subtotal: args.subtotal,
+      shippingCost: args.shippingCost,
+      taxTotal: args.taxTotal,
+      discountTotal: args.discountTotal,
       total: args.total,
       status: "pending",
+      paymentStatus: "unpaid",
+      paymentMethod: args.paymentMethod,
+      stripePaymentIntentId: args.stripePaymentIntentId,
       shippingAddress: args.shippingAddress,
       createdAt: Date.now(),
     });
@@ -75,25 +96,83 @@ export const listAll = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
-    const user = await ctx.db.get(userId);
-    if (!user || user.role !== "admin") return null;
-    return await ctx.db.query("orders").order("desc").collect();
+    
+    const adminUser = await ctx.db.get(userId);
+    if (!adminUser || adminUser.role !== "admin") return null;
+    
+    const orders = await ctx.db.query("orders").order("desc").collect();
+
+    // Fetch the user for each order to append the email address
+    const enrichedOrders = await Promise.all(
+      orders.map(async (order) => {
+        const user = await ctx.db.get(order.userId);
+        return {
+          ...order,
+          customerEmail: user?.email || "No email on file", // Adjust 'email' if your users table uses a different key
+        };
+      })
+    );
+
+    return enrichedOrders;
   },
 });
 
 export const updateStatus = mutation({
-  args: { id: v.id("orders"), status: v.union(
-    v.literal("pending"),
-    v.literal("processing"),
-    v.literal("shipped"),
-    v.literal("delivered"),
-    v.literal("cancelled")
-  )},
+  args: {
+    id: v.id("orders"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("shipped"),
+      v.literal("delivered"),
+      v.literal("cancelled")
+    ),
+    paymentStatus: v.optional(
+      v.union(
+        v.literal("unpaid"),
+        v.literal("paid"),
+        v.literal("refunded"),
+        v.literal("failed")
+      )
+    ),
+  },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     const user = await ctx.db.get(userId);
     if (!user || user.role !== "admin") throw new Error("Not authorized");
-    return await ctx.db.patch(args.id, { status: args.status });
+
+    const patchData: {
+      status: typeof args.status;
+      paymentStatus?: typeof args.paymentStatus;
+    } = { status: args.status };
+
+    if (args.paymentStatus) {
+      patchData.paymentStatus = args.paymentStatus;
+    }
+
+    return await ctx.db.patch(args.id, patchData);
+  },
+});
+
+export const removeOrder = mutation({
+  args: {
+    id: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    // 1. Check if the user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // 2. Check if the user is an admin
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "admin") throw new Error("Not authorized");
+
+    // 3. Verify the order exists before trying to delete it
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found");
+
+    // 4. Delete the order
+    await ctx.db.delete(args.id);
   },
 });

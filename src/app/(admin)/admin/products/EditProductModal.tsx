@@ -5,7 +5,6 @@ import { api } from "../../../../../convex/_generated/api";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 
-import { upscaleImage } from "@/lib/upscaleImage";
 import {
   Dialog,
   DialogContent,
@@ -121,12 +120,11 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
 
     setUploading(true);
     try {
-      const processed = await upscaleImage(file);
       const postUrl = await generateUploadUrl();
       const result = await fetch(postUrl, {
         method: "POST",
-        headers: { "Content-Type": processed.type },
-        body: processed,
+        headers: { "Content-Type": file.type },
+        body: file,
       });
 
       if (!result.ok) throw new Error("Upload failed");

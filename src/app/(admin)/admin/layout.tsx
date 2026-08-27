@@ -1,4 +1,3 @@
-// app/(admin)/layout.tsx
 "use client";
 
 import { useQuery } from "convex/react";
@@ -24,16 +23,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [user, isLoading, router]);
 
   // 1. Loading State: Display a secure screen while processing
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-white">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent border-blue-500" />
-          <p className="text-sm font-medium tracking-wide">Verifying credentials...</p>
-        </div>
-      </div>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-white">
+  //       <div className="flex flex-col items-center gap-2">
+  //         <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent border-blue-500" />
+  //         <p className="text-sm font-medium tracking-wide">Verifying credentials...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // 2. Failure State: Render absolutely nothing if they fail the check
   if (!user || user.role !== "admin") {

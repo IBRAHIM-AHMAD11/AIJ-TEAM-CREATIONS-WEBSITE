@@ -9,7 +9,6 @@ import { toast } from "sonner";
 
 // Components
 import { FeatureSelectionModal } from "../../FeatureSelectionModal";
-import { upscaleImage } from "@/lib/upscaleImage";
 
 type FeatureType = "color" | "size" | "material" | "dimension" | "finish" | "custom";
 
@@ -84,12 +83,11 @@ export default function NewProductPage() {
 
     setUploading(true);
     try {
-      const processed = await upscaleImage(file);
       const postUrl = await generateUploadUrl();
       const result = await fetch(postUrl, {
         method: "POST",
-        headers: { "Content-Type": processed.type },
-        body: processed,
+        headers: { "Content-Type": file.type },
+        body: file,
       });
 
       if (!result.ok) throw new Error("Upload failed");
@@ -145,7 +143,7 @@ export default function NewProductPage() {
   };
 
   // 👇 NEW: 3D model upload handler
-const handleModelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleModelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 

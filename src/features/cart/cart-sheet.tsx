@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, Trash2, LogIn } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { AnimatePresence, motion } from "framer-motion";
-import { toast } from "sonner";
 
 export function CartSheet() {
   const [open, setOpen] = useAtom(cartOpenAtom);
@@ -65,7 +64,7 @@ export function CartSheet() {
                 Your cart items will be saved across sessions
               </p>
             </div>
-            <Button onClick={() => router.push("/auth")}>
+            <Button onClick={() => { setOpen(false); router.push("/auth"); }}>
               Sign In
             </Button>
           </motion.div>
@@ -126,7 +125,17 @@ export function CartSheet() {
                   <Trash2 className="size-4 mr-1" />
                   Clear
                 </Button>
-                <Button size="sm" className="flex-1" onClick={() => { setOpen(false); toast.info("Checkout coming soon!"); }}>
+                {/* 
+                  ✅ FIX: Updated this button to close the sheet and route to /checkout 
+                */}
+                <Button 
+                  size="sm" 
+                  className="flex-1" 
+                  onClick={() => {
+                    setOpen(false); 
+                    router.push("/checkout"); 
+                  }}
+                >
                   Checkout
                 </Button>
               </div>
