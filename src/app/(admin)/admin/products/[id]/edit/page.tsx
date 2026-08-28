@@ -40,6 +40,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [inventoryCount, setInventoryCount] = useState(0);
   const [categoryId, setCategoryId] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState("");
   const [features, setFeatures] = useState<ProductFeature[]>([]);
@@ -126,6 +127,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleAddImageUrl = () => {
+    if (!imageUrlInput.trim()) return;
+    setUploadedImages((prev) => [...prev, imageUrlInput.trim()]);
+    setImageUrlInput("");
+    toast.success("Image link added");
   };
 
   const handleRemoveImage = (index: number) => {
@@ -459,7 +467,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         {/* Images */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Product Images <span className="text-xs text-gray-400 font-normal">(upload one at a time)</span>
+            Product Images <span className="text-xs text-gray-400 font-normal">(upload file or paste URL)</span>
           </label>
           {uploadedImages.length > 0 && (
             <div className="flex flex-wrap gap-3 mb-3">
@@ -481,18 +489,49 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               ))}
             </div>
           )}
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
-          >
-            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
-            {uploading ? (
-              <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
-            ) : (
-              <p className="text-sm text-gray-600">
-                {uploadedImages.length === 0 ? "Click to add images" : "Click to add another image"}
-              </p>
-            )}
+          <div className="space-y-2">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
+            >
+              <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
+              {uploading ? (
+                <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  {uploadedImages.length === 0 ? "Click to add images" : "Click to add another image"}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs text-gray-400">or</span>
+              <span className="h-px flex-1 bg-gray-200" />
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={imageUrlInput}
+                onChange={(e) => setImageUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddImageUrl();
+                  }
+                }}
+                placeholder="Paste image URL (e.g. https://...)"
+                className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-gray-900 text-sm"
+              />
+              <button
+                type="button"
+                onClick={handleAddImageUrl}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-md border transition"
+              >
+                Add Link
+              </button>
+            </div>
           </div>
         </div>
 
