@@ -37,6 +37,13 @@ interface MediaItem {
   url: string;
 }
 
+// 👇 NEW: Helper function to extract YouTube ID
+function getYouTubeId(url: string) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
 function computeEffectivePrice(
   product: { price?: number; features?: Array<{ type: string; label: string; value: string; priceAdjustment?: number }> } | null | undefined,
   selectedColor: string,
@@ -220,7 +227,7 @@ export default function ProductPage({ params }: ProductPageProps) {
                       <span className="text-[9px] font-bold uppercase tracking-wider bg-primary text-primary-foreground px-1 py-0.5 rounded-xs absolute top-1 left-1 scale-75 origin-top-left">Video</span>
                       <Play className="size-5 text-primary fill-current" />
                     </div>
-                  ) : item.type === "model" ? (                       // 👈 NEW
+                  ) : item.type === "model" ? (       // 👈 NEW
                     <div className="relative w-full h-full flex items-center justify-center bg-zinc-900 text-white">
                       <span className="text-[9px] font-bold uppercase tracking-wider bg-blue-600 text-white px-1 py-0.5 rounded-xs absolute top-1 left-1 scale-75 origin-top-left">3D</span>
                       <svg className="size-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
@@ -233,8 +240,24 @@ export default function ProductPage({ params }: ProductPageProps) {
             </div>
 
             <div ref={containerRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} className="relative aspect-square w-full rounded-xl border border-border bg-card overflow-hidden shadow-xs">
+              {/* 👇 CHANGED: Dynamic handling for YouTube vs Direct Videos */}
               {activeMedia.type === "video" ? (
-                <video src={activeMedia.url} controls autoPlay muted className="w-full h-full object-contain bg-black" />
+                (() => {
+                  const ytId = getYouTubeId(activeMedia.url);
+                  if (ytId) {
+                    return (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1`}
+                        className="w-full h-full object-contain bg-black border-none"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    );
+                  }
+                  return (
+                    <video src={activeMedia.url} controls autoPlay muted className="w-full h-full object-contain bg-black" />
+                  );
+                })()
               ): activeMedia.type === "model" ? (   // 👈 NEW
     <ModelViewer src={activeMedia.url} />) : (
                 <button
