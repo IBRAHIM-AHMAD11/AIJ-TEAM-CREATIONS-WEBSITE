@@ -609,7 +609,7 @@ export default function NewProductPage() {
 
       {/* Category Modal */}
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-60">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-lg border">
             <h3 className="text-lg font-bold text-gray-950 mb-4">New Category</h3>
             <form onSubmit={handleAddCategory} className="space-y-4">
