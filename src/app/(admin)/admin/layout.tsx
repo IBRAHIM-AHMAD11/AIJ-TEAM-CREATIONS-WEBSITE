@@ -4,7 +4,16 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api"
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import type { Metadata } from "next";
 import { Toaster } from "sonner";
+
+export const metadata: Metadata = {
+  title: "AIJ Team Creations -Admin Panel",
+  description: "Admin Panel of AIJ Team Creations",
+  icons: {
+    icon: "./upscaled_720x720_nobg.png"
+  }
+};
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = useQuery(api.users.getCurrentUser); // Make sure this query returns your user document

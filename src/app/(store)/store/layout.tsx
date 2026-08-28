@@ -4,6 +4,15 @@ import CompareBar from "./compareBar";
 import Footer from "@/components/ui/footer";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "AIJ Team Creations Store",
+  description: "AIJ Team Creations Store",
+  icons: {
+    icon: "./upscaled_720x720_nobg.png"
+  }
+};
 
 interface StoreLayoutProps {
   children: React.ReactNode;
