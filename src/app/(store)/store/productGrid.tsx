@@ -130,13 +130,24 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
             <Link href={`/products/${product.slug}`} className="group block flex-1">
               <div className="aspect-square bg-gray-100 relative overflow-hidden">
                 {product.images?.[0] ? (
-                  <Image
-                    src={product.images[0]}
-                    alt={product.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  />
+                  <>
+                    <Image
+                      src={product.images[0]}
+                      alt={product.title}
+                      fill
+                      className={`object-cover transition-all duration-300 group-hover:scale-105 ${product.images[1] ? "group-hover:opacity-0" : ""}`}
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    />
+                    {product.images[1] && (
+                      <Image
+                        src={product.images[1]}
+                        alt={`${product.title} alternate view`}
+                        fill
+                        className="object-cover opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-105"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      />
+                    )}
+                  </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Image src="/placeholder-product.jpg" alt={product.title} fill className="object-cover" />

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "AIJ Team Creations Store",
   description: "AIJ Team Creations Store",
   icons: {
-    icon: "./upscaled_720x720_nobg.png"
+    icon: "/upscaled_720x720_nobg.png"
   }
 };
 
