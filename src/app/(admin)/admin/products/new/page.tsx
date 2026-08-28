@@ -37,6 +37,7 @@ export default function NewProductPage() {
   const [inventoryCount, setInventoryCount] = useState(0);
   const [categoryId, setCategoryId] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState(""); // 👈 NEW: Image URL link state
   const [videoUrl, setVideoUrl] = useState("");
 
   // Feature State
@@ -52,13 +53,13 @@ export default function NewProductPage() {
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   
-  // 👇 NEW: 3D Model state
+  // 3D Model state
   const [uploadedModelUrl, setUploadedModelUrl] = useState("");
   const [modelUploading, setModelUploading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
-  const modelFileInputRef = useRef<HTMLInputElement>(null); // 👈 NEW
+  const modelFileInputRef = useRef<HTMLInputElement>(null);
 
   const convertToSlug = (text: string) => {
     return text
@@ -105,6 +106,14 @@ export default function NewProductPage() {
     }
   };
 
+  // 👇 NEW: Add Image URL link directly
+  const handleAddImageUrl = () => {
+    if (!imageUrlInput.trim()) return;
+    setUploadedImages((prev) => [...prev, imageUrlInput.trim()]);
+    setImageUrlInput("");
+    toast.success("Image link added");
+  };
+
   const handleRemoveImage = (index: number) => {
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
@@ -142,7 +151,7 @@ export default function NewProductPage() {
     setUploadedVideoUrl("");
   };
 
-  // 👇 NEW: 3D model upload handler
+  // 3D model upload handler
   const handleModelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -151,7 +160,6 @@ export default function NewProductPage() {
     try {
       const postUrl = await generateUploadUrl();
       
-      // Only set Content-Type if the browser gives one
       const headers: Record<string, string> = {};
       if (file.type) {
         headers["Content-Type"] = file.type;
@@ -166,7 +174,6 @@ export default function NewProductPage() {
       if (!result.ok) throw new Error("Upload failed");
       const { storageId } = await result.json();
 
-      // ✅ Use the same method as images/videos
       const modelUrl = await getImageUrl({ storageId });
       if (modelUrl) {
         setUploadedModelUrl(modelUrl);
@@ -182,7 +189,6 @@ export default function NewProductPage() {
   const handleRemoveModel = () => {
     setUploadedModelUrl("");
   };
-  // 👆 END NEW
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,7 +214,6 @@ export default function NewProductPage() {
     setFeatures((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  // Helper to insert markdown syntax at cursor position
   const insertMarkdown = (prefix: string, suffix: string = "") => {
     const textarea = document.getElementById("markdown-editor") as HTMLTextAreaElement;
     if (!textarea) return;
@@ -266,7 +271,7 @@ export default function NewProductPage() {
         video: (uploadedVideoUrl || videoUrl).trim() || undefined,
         features, 
         isActive: true,
-        model3d: uploadedModelUrl || undefined, // 👈 NEW
+        model3d: uploadedModelUrl || undefined,
       });
 
       toast.success("Product successfully created!");
@@ -338,7 +343,7 @@ export default function NewProductPage() {
           </select>
         </div>
 
-        {/* Description - Expanded to launch modal */}
+        {/* Description */}
         <div>
           <div className="flex justify-between items-center mb-1">
             <label className="block text-sm font-medium text-gray-700">Description</label>
@@ -442,7 +447,7 @@ export default function NewProductPage() {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Product Images <span className="text-xs text-gray-400 font-normal">(upload one at a time)</span>
+              Product Images <span className="text-xs text-gray-400 font-normal">(upload file or paste URL)</span>
             </label>
             
             {uploadedImages.length > 0 && (
@@ -466,18 +471,50 @@ export default function NewProductPage() {
               </div>
             )}
 
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
-            >
-              <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
-              {uploading ? (
-                <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
-              ) : (
-                <p className="text-sm text-gray-600">
-                  {uploadedImages.length === 0 ? "Click to add images" : "Click to add another image"}
-                </p>
-              )}
+            <div className="space-y-2">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition duration-150"
+              >
+                <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
+                {uploading ? (
+                  <p className="text-sm text-blue-500 font-medium animate-pulse">Uploading...</p>
+                ) : (
+                  <p className="text-sm text-gray-600">
+                    {uploadedImages.length === 0 ? "Click to add images" : "Click to add another image"}
+                  </p>
+                )}
+              </div>
+
+              {/* 👇 NEW: Link input for images */}
+              <div className="flex items-center gap-2">
+                <span className="h-px flex-1 bg-gray-200" />
+                <span className="text-xs text-gray-400">or</span>
+                <span className="h-px flex-1 bg-gray-200" />
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddImageUrl();
+                    }
+                  }}
+                  placeholder="Paste image URL (e.g. https://...)"
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-gray-900 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddImageUrl}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-md border transition"
+                >
+                  Add Link
+                </button>
+              </div>
             </div>
           </div>
 
@@ -549,7 +586,7 @@ export default function NewProductPage() {
             )}
           </div>
 
-          {/* 👇 NEW: 3D Model Upload Section */}
+          {/* 3D Model Upload Section */}
           <div className="p-4 border rounded-md bg-gray-50">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               3D Model <span className="text-xs text-gray-400 font-normal">optional — upload a .glb file</span>
@@ -587,7 +624,6 @@ export default function NewProductPage() {
               </div>
             )}
           </div>
-          {/* 👆 END NEW */}
         </div>
 
         <div className="flex items-center gap-3">
@@ -631,7 +667,7 @@ export default function NewProductPage() {
         </div>
       )}
 
-      {/* NEW: Markdown Description Modal */}
+      {/* Markdown Description Modal */}
       {showDescriptionModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-4xl w-full h-[85vh] flex flex-col shadow-2xl border border-gray-200">
