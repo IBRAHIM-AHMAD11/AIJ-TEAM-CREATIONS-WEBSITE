@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "AIJ Team Creations - Admin Panel",
   description: "Admin Panel of AIJ Team Creations",
   icons: {
-    icon: "./upscaled_720x720_nobg.png" // Fixed path: Starts with "/"
+    icon: "/upscaled_720x720_nobg.png" // Fixed path: Starts with "/"
   }
 };
 
