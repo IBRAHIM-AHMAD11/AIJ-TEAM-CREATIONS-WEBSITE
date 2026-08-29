@@ -12,6 +12,7 @@ import {
 } from "framer-motion";
 import { ArrowRight, Droplets, Sparkles, PackageCheck, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 // ---------------------------------------------------------------------------
 // Content — kept as typed data so copy changes never touch markup/animation.
@@ -303,7 +304,9 @@ function LivingPour() {
         </>
       )}
 
-      
+      <div className="relative h-full w-full cursor-pointer">
+        <Image src={"./upscaled_720x720_nobg.png"} alt="Logo"/>
+      </div>
 
       {/* click-triggered gold splash */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
