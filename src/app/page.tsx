@@ -303,59 +303,7 @@ function LivingPour() {
         </>
       )}
 
-      <motion.div
-        style={{ rotateX, rotateY }}
-        onClick={handleClick}
-        className="relative h-full w-full cursor-pointer"
-      >
-        {/* soft ambient glow behind the blob */}
-        <div className="absolute inset-0 scale-110 rounded-full bg-[var(--primary)] opacity-20 blur-3xl" />
-
-        {/* the pour itself */}
-        <motion.div
-          animate={
-            prefersReducedMotion
-              ? { borderRadius: blobRadii[0] }
-              : { borderRadius: blobRadii }
-          }
-          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-          whileTap={{ scale: 0.97 }}
-          className="relative h-full w-full overflow-hidden shadow-2xl"
-          style={{
-            borderRadius: blobRadii[0],
-            background:
-              "conic-gradient(from 200deg at 45% 40%, #f5c518 0%, #a85d10 22%, #e8951f 45%, #ffe9a8 65%, #f5c518 100%)",
-          }}
-        >
-          {/* glossy highlight, like light on a cured resin surface */}
-          <div
-            className="absolute -left-6 -top-10 h-2/3 w-2/3 rounded-full opacity-50 blur-2xl"
-            style={{ background: "radial-gradient(circle, #fffbe8, transparent 70%)" }}
-          />
-
-          {/* gold vein of light traveling across the surface */}
-          {!prefersReducedMotion && (
-            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 400" fill="none">
-              <motion.path
-                d="M40 320 C 120 260, 140 200, 110 150 C 90 115, 150 90, 190 60 C 230 30, 300 55, 340 40"
-                stroke="url(#veinGradient)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: [0, 1, 1, 0] }}
-                transition={{ duration: 5, repeat: Infinity, repeatDelay: 2, ease: "easeInOut" }}
-              />
-              <defs>
-                <linearGradient id="veinGradient" x1="0" y1="0" x2="400" y2="400">
-                  <stop offset="0%" stopColor="#fffbe8" stopOpacity="0" />
-                  <stop offset="50%" stopColor="#fffbe8" stopOpacity="0.95" />
-                  <stop offset="100%" stopColor="#fffbe8" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
-          )}
-        </motion.div>
-      </motion.div>
+      
 
       {/* click-triggered gold splash */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
