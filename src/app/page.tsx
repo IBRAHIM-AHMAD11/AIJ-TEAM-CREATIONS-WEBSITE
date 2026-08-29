@@ -586,7 +586,7 @@ export default function ResinLanding() {
         }`}
       >
         <span className="font-display text-lg font-semibold tracking-tight text-[var(--foreground)]">
-          AIJ Team Creations
+          AIJ Creations
         </span>
         <nav className="flex items-center gap-6">
           <a
@@ -778,7 +778,7 @@ export default function ResinLanding() {
       {/* ---------------------------------------------------------------- */}
       <footer className="border-t border-[var(--border)] px-6 py-8 sm:px-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs text-[var(--muted-foreground)] sm:flex-row">
-          <span>© {new Date().getFullYear()} AIJ Team Creations. Poured by hand.</span>
+          <span>© {new Date().getFullYear()} AIJ Creations. Poured by hand.</span>
         </div>
       </footer>
     </div>

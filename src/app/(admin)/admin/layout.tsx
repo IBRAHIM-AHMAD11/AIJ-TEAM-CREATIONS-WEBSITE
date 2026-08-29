@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import AdminClientWrapper from "../admin/AdminClientWrapper"; 
 
 export const metadata: Metadata = {
-  title: "AIJ Team Creations - Admin Panel",
-  description: "Admin Panel of AIJ Team Creations",
+  title: "AIJ Creations - Admin Panel",
+  description: "Admin Panel of AIJ Creations",
   icons: {
     icon: "/upscaled_720x720_nobg.png" // Fixed path: Starts with "/"
   }

@@ -15,8 +15,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AIJ Team Creations -Landing Page",
-  description: "Landing Page of AIJ Team Creations",
+  title: "AIJ Creations -Landing Page",
+  description: "Landing Page of AIJ Creations",
   icons: {
     icon: "./upscaled_720x720_nobg.png"
   }

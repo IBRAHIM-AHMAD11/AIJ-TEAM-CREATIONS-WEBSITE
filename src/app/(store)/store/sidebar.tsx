@@ -58,7 +58,7 @@ export default function Sidebar() {
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-between">
           <span className="font-extrabold text-lg text-sidebar-foreground tracking-tight underline decoration-sidebar-primary decoration-2 underline-offset-4 group-data-[collapsible=icon]:hidden">
-            AIJ TEAM Creations
+            AIJ Creations
           </span>
           <SidebarTrigger className="hover:bg-sidebar-accent text-sidebar-foreground" />
         </div>

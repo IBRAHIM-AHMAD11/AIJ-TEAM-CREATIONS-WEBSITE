@@ -7,8 +7,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AIJ Team Creations Store",
-  description: "AIJ Team Creations Store",
+  title: "AIJ Creations Store",
+  description: "AIJ Creations Store",
   icons: {
     icon: "/upscaled_720x720_nobg.png"
   }
