@@ -305,7 +305,7 @@ function LivingPour() {
       )}
 
       <div className="relative h-full w-full cursor-pointer">
-        <Image src={"./upscaled_720x720_nobg.png"} alt="Logo"/>
+        <Image src="/upscaled_720x720_nobg.png" alt="Logo" width={1080} height={1080} />
       </div>
 
       {/* click-triggered gold splash */}
@@ -329,12 +329,6 @@ function LivingPour() {
           ))}
         </AnimatePresence>
       </div>
-
-      {!prefersReducedMotion && (
-        <span className="pointer-events-none absolute -bottom-8 text-center text-xs text-[var(--muted-foreground)]">
-          click the pour
-        </span>
-      )}
     </div>
   );
 }
