@@ -36,6 +36,12 @@ export function DashboardHeader({ itemAnim }: DashboardHeaderProps) {
             Add Product
           </Link>
         </Button>
+        <Button className="shadow-sm">
+          <Link href="/admin/categories" className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Manage Categories
+          </Link>
+        </Button>
       </div>
     </motion.div>
   );

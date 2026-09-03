@@ -59,6 +59,7 @@ const schema = defineSchema({
   categories: defineTable({
     name: v.string(),
     slug: v.string(),
+    isDeleting: v.optional(v.boolean()),
   }).index("by_slug", ["slug"]),
 
   addresses: defineTable({

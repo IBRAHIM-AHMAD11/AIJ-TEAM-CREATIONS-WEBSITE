@@ -58,53 +58,56 @@ const extractStorageId = (url: string): string | null => {
   return id ?? null;
 };
 
+export async function deleteProductWithAssets(ctx: any, id: any) {
+  const product = await ctx.db.get(id);
+  if (!product) return;
+
+  // Clean up images from Convex Storage
+  if (product.images && product.images.length > 0) {
+    for (const imageUrl of product.images) {
+      const storageId = extractStorageId(imageUrl);
+      if (storageId) {
+        try {
+          await ctx.storage.delete(storageId as any);
+        } catch (err) {
+          console.error("Failed to delete image storage asset:", err);
+        }
+      }
+    }
+  }
+
+  // Clean up video
+  if (product.video) {
+    const storageId = extractStorageId(product.video);
+    if (storageId) {
+      try {
+        await ctx.storage.delete(storageId as any);
+      } catch (err) {
+        console.error("Failed to delete video storage asset:", err);
+      }
+    }
+  }
+
+  // Clean up 3D model
+  if (product.model3d) {
+    const storageId = extractStorageId(product.model3d);
+    if (storageId) {
+      try {
+        await ctx.storage.delete(storageId as any);
+      } catch (err) {
+        console.error("Failed to delete 3D model storage asset:", err);
+      }
+    }
+  }
+
+  // Delete product record
+  await ctx.db.delete(id);
+}
+
 export const deleteProduct = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
-    const product = await ctx.db.get(args.id);
-    if (!product) {
-      throw new Error("Product not found");
-    }
-
-    // Clean up images from Convex Storage
-    if (product.images && product.images.length > 0) {
-      for (const imageUrl of product.images) {
-        const storageId = extractStorageId(imageUrl);
-        if (storageId) {
-          try {
-            await ctx.storage.delete(storageId as any);
-          } catch (err) {
-            console.error("Failed to delete image storage asset:", err);
-          }
-        }
-      }
-    }
-
-    // Clean up video if it's stored on Convex
-    if (product.video) {
-      const storageId = extractStorageId(product.video);
-      if (storageId) {
-        try {
-          await ctx.storage.delete(storageId as any);
-        } catch (err) {
-          console.error("Failed to delete video storage asset:", err);
-        }
-      }
-    }
-
-    if (product.model3d) {
-      const storageId = extractStorageId(product.model3d);
-      if (storageId) {
-        try {
-          await ctx.storage.delete(storageId as any);
-        } catch (err) {
-          console.error("Failed to delete 3D model storage asset:", err);
-        }
-      }
-    }
-
-    // Delete the product document from the database
-    await ctx.db.delete(args.id);
+    await deleteProductWithAssets(ctx, args.id);
   },
 });
 
