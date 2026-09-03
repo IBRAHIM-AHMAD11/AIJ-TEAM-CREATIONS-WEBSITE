@@ -16,6 +16,7 @@ interface ProductFeature {
   type: FeatureType;
   label: string;
   value: string;
+  unit?: string; // 👈 NEW: Added unit from schema
   priceAdjustment?: number;
 }
 
@@ -37,7 +38,7 @@ export default function NewProductPage() {
   const [inventoryCount, setInventoryCount] = useState(0);
   const [categoryId, setCategoryId] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [imageUrlInput, setImageUrlInput] = useState(""); // 👈 NEW: Image URL link state
+  const [imageUrlInput, setImageUrlInput] = useState(""); 
   const [videoUrl, setVideoUrl] = useState("");
 
   // Feature State
@@ -106,7 +107,6 @@ export default function NewProductPage() {
     }
   };
 
-  // 👇 NEW: Add Image URL link directly
   const handleAddImageUrl = () => {
     if (!imageUrlInput.trim()) return;
     setUploadedImages((prev) => [...prev, imageUrlInput.trim()]);
@@ -151,7 +151,6 @@ export default function NewProductPage() {
     setUploadedVideoUrl("");
   };
 
-  // 3D model upload handler
   const handleModelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -393,10 +392,15 @@ export default function NewProductPage() {
                   )}
                   <span className="font-medium text-gray-700">
                     <span className="text-gray-400 text-xs mr-1 capitalize">{feature.type}:</span>
+                    {/* 
+                      👇 NEW: Replaced hardcoded "cm" with dynamic feature.unit 
+                      Falls back to an empty string if unit is not provided. 
+                    */}
                     {feature.type === "dimension"
                       ? (() => {
                           const parts = feature.value.split("x");
-                          return parts.map(p => `${p}cm`).join(" × ");
+                          const unitLabel = feature.unit || "";
+                          return parts.map(p => `${p.trim()}${unitLabel}`).join(" × ");
                         })()
                       : feature.label
                     }
@@ -486,7 +490,6 @@ export default function NewProductPage() {
                 )}
               </div>
 
-              {/* 👇 NEW: Link input for images */}
               <div className="flex items-center gap-2">
                 <span className="h-px flex-1 bg-gray-200" />
                 <span className="text-xs text-gray-400">or</span>

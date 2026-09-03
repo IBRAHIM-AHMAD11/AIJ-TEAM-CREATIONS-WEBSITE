@@ -388,7 +388,10 @@ export default function ProductPage({ params }: ProductPageProps) {
                   <div className="flex flex-wrap gap-2">
                     {product.features.filter((f) => f.type === "dimension").map((feature, i) => {
                       const parts = feature.value.split("x");
-                      const formatted = parts.map(p => `${p}cm`).join(" × ");
+                      // Extract feature.unit, falling back to "cm" if undefined
+                      const unit = (feature as { unit?: string }).unit || "cm";
+                      const formatted = parts.map((p) => `${p}${unit}`).join(" × ");
+
                       return (
                         <button
                           key={`dim-${feature.value}-${i}`}

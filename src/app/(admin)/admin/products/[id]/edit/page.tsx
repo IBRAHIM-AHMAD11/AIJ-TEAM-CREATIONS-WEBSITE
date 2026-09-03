@@ -17,6 +17,7 @@ interface ProductFeature {
   type: FeatureType;
   label: string;
   value: string;
+  unit?: string;
   priceAdjustment?: number;
 }
 
@@ -197,7 +198,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     setFeatures((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  // Helper to insert markdown syntax at cursor position inside the modal editor
   const insertMarkdown = (prefix: string, suffix: string = "") => {
     const textarea = document.getElementById("markdown-editor") as HTMLTextAreaElement;
     if (!textarea) return;
@@ -354,7 +354,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           </select>
         </div>
 
-        {/* Description – now with "Open Markdown Editor" button */}
+        {/* Description */}
         <div>
           <div className="flex justify-between items-center mb-1">
             <label className="block text-sm font-medium text-gray-700">Description</label>
@@ -406,7 +406,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     {feature.type === "dimension"
                       ? (() => {
                           const parts = feature.value.split("x");
-                          return parts.map(p => `${p}cm`).join(" × ");
+                          const unit = feature.unit || "cm";
+                          return parts.map((p) => `${p}${unit}`).join(" × ");
                         })()
                       : feature.label
                     }
@@ -642,7 +643,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* Markdown Description Modal – added from the create page */}
+      {/* Markdown Description Modal */}
       {showDescriptionModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-4xl w-full h-[85vh] flex flex-col shadow-2xl border border-gray-200">

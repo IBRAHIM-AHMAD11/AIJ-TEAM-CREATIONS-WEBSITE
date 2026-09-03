@@ -37,6 +37,7 @@ export const createProduct = mutation({
             v.literal("custom")
           ),
           label: v.string(),
+          unit: v.optional(v.string()),
           value: v.string(),
           priceAdjustment: v.optional(v.number()),
         })
@@ -132,6 +133,7 @@ export const updateProduct = mutation({
             v.literal("custom")
           ),
           label: v.string(),
+          unit: v.optional(v.string()),
           value: v.string(),
           priceAdjustment: v.optional(v.number()),
         })

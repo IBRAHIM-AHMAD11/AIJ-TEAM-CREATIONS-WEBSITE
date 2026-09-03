@@ -102,6 +102,7 @@ interface FeatureSelectionModalProps {
     type: FeatureType;
     label: string;
     value: string;
+    unit?: string;
     priceAdjustment?: number;
   }) => void;
   basePriceDollars?: string;
@@ -112,14 +113,14 @@ export function FeatureSelectionModal({ onClose, onSave, basePriceDollars }: Fea
   const [activeTab, setActiveTab] = useState<FeatureType>("color");
   const [colorSearch, setColorSearch] = useState("");
 
-  // Color state (no default)
+  // Color state
   const [selectedColorHex, setSelectedColorHex] = useState<string>("");
   const [selectedColorName, setSelectedColorName] = useState<string>("");
   const [showOtherColor, setShowOtherColor] = useState(false);
   const [otherColorHex, setOtherColorHex] = useState("#94a3b8");
   const [otherColorName, setOtherColorName] = useState("");
 
-  // Size state (no default)
+  // Size state
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [showOtherSize, setShowOtherSize] = useState(false);
   const [otherSizeValue, setOtherSizeValue] = useState("");
@@ -147,7 +148,7 @@ export function FeatureSelectionModal({ onClose, onSave, basePriceDollars }: Fea
   const [customValue, setCustomValue] = useState("");
   const [customColor, setCustomColor] = useState("#94a3b8");
 
-  // Price adjustment (shared across all tabs, in dollars for display)
+  // Price adjustment
   const [priceAdjustmentDollars, setPriceAdjustmentDollars] = useState("0");
 
   // ── Color helpers ──
@@ -167,6 +168,11 @@ export function FeatureSelectionModal({ onClose, onSave, basePriceDollars }: Fea
   }, [colorSearch, allColors]);
 
   const handleColorSelection = (hex: string) => {
+    if (hex === "__other__") {
+      setShowOtherColor(true);
+      setSelectedColorHex("");
+      return;
+    }
     setShowOtherColor(false);
     setSelectedColorHex(hex);
     const matched = allColors.find((c) => c.hex === hex);
@@ -252,12 +258,29 @@ export function FeatureSelectionModal({ onClose, onSave, basePriceDollars }: Fea
         if (showOtherFinish) return otherFinishValue.trim().length > 0;
         return selectedFinish !== "";
       case "custom":
-        if (customType === "color") return customLabel.trim() !== "" && customValue.trim() !== "";
         return customLabel.trim() !== "" && customValue.trim() !== "";
       default:
         return false;
     }
-  }, [activeTab, showOtherColor, otherColorName, selectedColorHex, showOtherSize, otherSizeValue, selectedSize, dimWidth, dimHeight, showOtherMaterial, otherMaterialValue, selectedMaterial, showOtherFinish, otherFinishValue, selectedFinish, customType, customLabel, customValue]);
+  }, [
+    activeTab,
+    showOtherColor,
+    otherColorName,
+    selectedColorHex,
+    showOtherSize,
+    otherSizeValue,
+    selectedSize,
+    dimWidth,
+    dimHeight,
+    showOtherMaterial,
+    otherMaterialValue,
+    selectedMaterial,
+    showOtherFinish,
+    otherFinishValue,
+    selectedFinish,
+    customLabel,
+    customValue,
+  ]);
 
   // ── Submit ──
   const handleSubmit = (e: React.FormEvent) => {
@@ -282,7 +305,14 @@ export function FeatureSelectionModal({ onClose, onSave, basePriceDollars }: Fea
       }
       case "dimension": {
         const dims = [dimWidth, dimHeight, dimDepth].filter(Boolean).join("x");
-        onSave({ type: "dimension", label: "Dimensions", value: dims, priceAdjustment });
+        const label = dimLabel.trim() || "Dimensions";
+        onSave({
+          type: "dimension",
+          label,
+          value: dims,
+          unit: dimUnit,
+          priceAdjustment,
+        });
         break;
       }
       case "material": {

@@ -45,6 +45,7 @@ const schema = defineSchema({
             v.literal("custom")
           ),
           label: v.string(),
+          unit: v.optional(v.string()),
           value: v.string(),
           priceAdjustment: v.optional(v.number()),
         })
