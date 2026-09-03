@@ -76,7 +76,7 @@ export function CategoryProductsDialog({ category, onClose }: CategoryProductsDi
               </div>
 
               <Link
-                href={`/admin/products?search=${encodeURIComponent(product.title)}`}
+                href={`/store/search?q=${encodeURIComponent(product.title)}`}
                 className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded transition-colors"
                 title="View in Products Admin"
               >

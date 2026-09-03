@@ -7,7 +7,8 @@ import { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { DeleteCategoryDialog } from "../../../../components/admin/delete-category-dialog";
 import { CategoryProductsDialog } from "../../../../components/admin/category-products-dialog";
-import { Trash2, Folder, Eye } from "lucide-react";
+import { Trash2, Folder, Eye, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 export default function CategoriesPage() {
   const categories = useQuery(api.categories.list);
@@ -53,6 +54,12 @@ export default function CategoriesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Categories</h1>
           <p className="text-sm text-slate-500">Manage your product categories and view linked items.</p>
         </div>
+        <Button className="shadow-sm">
+          <Link href="/admin" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Admin Page
+          </Link>
+        </Button>
       </div>
 
       {categories === undefined && (
