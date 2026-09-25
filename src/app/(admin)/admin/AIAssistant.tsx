@@ -313,7 +313,7 @@ export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }:
           )}
 
           {/* Messages */}
-          <div className="relative flex-1">
+          <div className="relative min-h-0 flex-1">
             <div
               ref={scrollRef}
               onDragOver={(e) => {
@@ -326,7 +326,7 @@ export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }:
                 setDragging(false);
                 handleFiles(Array.from(e.dataTransfer.files));
               }}
-              className="h-full space-y-3 overflow-y-auto p-3"
+              className="h-full space-y-3 overflow-y-auto overscroll-contain p-3"
             >
               {messages.map((msg) => {
                 if (msg.role === "user") {
