@@ -123,18 +123,23 @@ export async function POST(req: NextRequest) {
       } catch { /* skip unreachable URLs */ }
     }
 
-    // 2. Build alternating user/model history
-    const contents: { role: string; parts: { text: string }[] }[] = [];
-    for (const m of history) {
+   // 2. Build alternating user/model history
+   type GeminiPart =
+      | { text: string }
+      | { inlineData: { mimeType: string; data: string } };
+
+   const contents: { role: string; parts: GeminiPart[] }[] = [];
+   for (const m of history) {
       if (!m?.text?.trim()) continue;
       const role = m.role === "assistant" ? "model" : "user";
-      if (contents.length && contents[contents.length - 1].role === role) {
-        contents[contents.length - 1].parts[0].text += "\n\n" + m.text.trim();
+      const last = contents[contents.length - 1];
+      if (last && last.role === role) {
+      last.parts.push({ text: m.text.trim() }); // merge consecutive same-role turns
       } else {
-        contents.push({ role, parts: [{ text: m.text.trim() }] });
+      contents.push({ role, parts: [{ text: m.text.trim() }] });
       }
-    }
-    while (contents.length && contents[0].role === "model") contents.shift();
+   }
+   while (contents.length && contents[0].role === "model") contents.shift();
 
     // 3. Final user turn (images + text)
     let finalText = message.trim();
