@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 const VALID_FIELDS = ["title", "slug", "description", "price", "inventoryCount", "category", "videoUrl", "features"];
 
 const SYSTEM_PROMPT = `You are "Listing Copilot" — a friendly, expert e-commerce product-listing assistant inside an admin dashboard.
