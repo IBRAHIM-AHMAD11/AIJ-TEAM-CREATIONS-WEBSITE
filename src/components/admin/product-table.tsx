@@ -90,7 +90,7 @@ export function ProductTable({ products, categories, deletingId, setProductToDel
                           )}
                         </TableCell>
                         <TableCell className="text-slate-700 font-medium">
-                          ${(product.price / 100).toFixed(2)}
+                          Rs.{(product.price / 100).toFixed(2)}
                         </TableCell>
                         <TableCell>
                           {product.inventoryCount === 0 ? (

@@ -35,7 +35,7 @@ export function DashboardStats({ totalProducts, totalValue, outOfStockProducts, 
           </CardHeader>
           <CardContent>
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", damping: 12, delay: 0.3 }} className="text-2xl font-bold text-slate-900">
-              ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Rs.{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </motion.div>
             <p className="text-xs text-slate-400 mt-1">Based on active price & inventory levels</p>
           </CardContent>

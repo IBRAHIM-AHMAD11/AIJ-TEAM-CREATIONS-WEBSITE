@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { AIAssistant, type AIUpdate } from "../../AIAssistant";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -61,6 +62,9 @@ export default function NewProductPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
   const modelFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [showAI, setShowAI] = useState(true);
+  const [recentlyFilled, setRecentlyFilled] = useState<string[]>([]);
 
   const convertToSlug = (text: string) => {
     return text
@@ -213,6 +217,94 @@ export default function NewProductPage() {
     setFeatures((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
+  const flashFields = (fields: string[]) => {
+    setRecentlyFilled(fields);
+    window.setTimeout(() => setRecentlyFilled([]), 2600);
+  };
+
+  const applyAIUpdates = async (updates: AIUpdate[]) => {
+    const touched: string[] = [];
+
+    for (const u of updates) {
+      switch (u.field) {
+        case "title": {
+          const v = u.stringValue?.trim();
+          if (v) {
+            setTitle(v);
+            setSlug(convertToSlug(v));
+            touched.push("title", "slug");
+          }
+          break;
+        }
+        case "slug": {
+          const v = u.stringValue?.trim();
+          if (v) { setSlug(convertToSlug(v)); touched.push("slug"); }
+          break;
+        }
+        case "description": {
+          const v = u.stringValue?.trim();
+          if (v) { setDescription(v); touched.push("description"); }
+          break;
+        }
+        case "price":
+          if (typeof u.numberValue === "number" && u.numberValue > 0) {
+            setPriceInput(String(u.numberValue));
+            touched.push("price");
+          }
+          break;
+        case "inventoryCount":
+          if (typeof u.numberValue === "number" && u.numberValue >= 0) {
+            setInventoryCount(Math.round(u.numberValue));
+            touched.push("inventoryCount");
+          }
+          break;
+        case "category": {
+          const v = u.stringValue?.trim();
+          if (!v) break;
+          const match = categories.find((c) => c.name.toLowerCase() === v.toLowerCase());
+          if (match) {
+            setCategoryId(match._id as unknown as string);
+            touched.push("category");
+          } else {
+            try {
+              const newId = await createCategory({ name: v, slug: convertToSlug(v) });
+              setCategoryId(newId as unknown as string);
+              toast.success(`Category "${v}" created & selected`);
+              touched.push("category");
+            } catch {
+              toast.error("Couldn't create that category.");
+            }
+          }
+          break;
+        }
+        case "features": {
+          if (u.features?.length) {
+            const mapped = u.features.map((f) => ({
+              type: f.type,
+              label: f.label,
+              value: f.value,
+              unit: f.unit,
+              priceAdjustment:
+                f.priceAdjustmentRupees !== undefined ? Math.round(f.priceAdjustmentRupees * 100) : undefined,
+            }));
+            setFeatures((prev) => {
+              const keys = new Set(prev.map((f) => `${f.type}:${f.value.toLowerCase()}`));
+              const fresh = mapped.filter((f) => !keys.has(`${f.type}:${f.value.toLowerCase()}`));
+              return fresh.length ? [...prev, ...fresh] : prev;
+            });
+            touched.push("features");
+          }
+          break;
+        }
+      }
+    }
+
+    if (touched.length) {
+      flashFields(touched);
+      toast.success(`✨ AI filled ${touched.length} field${touched.length > 1 ? "s" : ""}`);
+    }
+  };
+
   const insertMarkdown = (prefix: string, suffix: string = "") => {
     const textarea = document.getElementById("markdown-editor") as HTMLTextAreaElement;
     if (!textarea) return;
@@ -252,7 +344,7 @@ export default function NewProductPage() {
 
     if (priceInCents + negativeSum <= 0) {
       return toast.error(
-        `Price would go negative with current adjustments. The lowest possible price is $${((priceInCents + negativeSum) / 100).toFixed(2)}. Increase base price or reduce discounts.`
+        `Price would go negative with current adjustments. The lowest possible price is Rs.${((priceInCents + negativeSum) / 100).toFixed(2)}. Increase base price or reduce discounts.`
       );
     }
 
@@ -275,12 +367,27 @@ export default function NewProductPage() {
 
       toast.success("Product successfully created!");
       router.push("/admin");
-    } catch (error) {
-      toast.error("Error saving product to database.");
+    } catch (error: any) {
+      // 👇 NEW: Check the error message for duplicate indicators
+      const errorMessage = error?.message?.toLowerCase() || String(error).toLowerCase();
+      
+      if (
+        errorMessage.includes("duplicate") || 
+        errorMessage.includes("already exists") || 
+        errorMessage.includes("slug") || 
+        errorMessage.includes("title") ||
+        errorMessage.includes("unique constraint")
+      ) {
+        toast.error(`A product with the title "${title}" or slug "${slug}" already exists. Please choose a unique name.`);
+      } else {
+        toast.error("Error saving product to database. Make sure the title and slug are unique.");
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const glow = (field: string) => (recentlyFilled.includes(field) ? "ai-glow" : "");
 
   return (
     <div className="max-w-3xl mx-auto bg-white p-8 rounded-xl border border-gray-100 shadow-sm space-y-8 relative">
@@ -296,7 +403,7 @@ export default function NewProductPage() {
           <input
             required
             type="text"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${glow("title")}`}
             value={title}
             onChange={handleTitleChange}
             placeholder="e.g. Vintage Leather Jacket"
@@ -311,7 +418,7 @@ export default function NewProductPage() {
           <input
             required
             type="text"
-            className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-gray-600 font-mono text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-gray-600 font-mono text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${glow("slug")}`}
             value={slug}
             onChange={handleSlugChange}
           />
@@ -331,7 +438,7 @@ export default function NewProductPage() {
           </div>
           <select
             required
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white"
+            className={`block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white ${glow("category")}`}
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
           >
@@ -357,7 +464,7 @@ export default function NewProductPage() {
           <textarea
             required
             rows={4}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 font-mono text-sm bg-gray-50"
+            className={`mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 font-mono text-sm bg-gray-50 ${glow("description")}`}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Write a brief description or open the editor for formatting..."
@@ -365,7 +472,7 @@ export default function NewProductPage() {
         </div>
 
         {/* Features Section */}
-        <div className="p-4 border rounded-md bg-gray-50">
+        <div className={`p-4 border rounded-md bg-gray-50 ${glow("features")}`}>
           <div className="flex justify-between items-center mb-3">
             <label className="block text-sm font-medium text-gray-700">Display Features</label>
             <button
@@ -409,7 +516,7 @@ export default function NewProductPage() {
                     )}
                     {feature.priceAdjustment !== undefined && feature.priceAdjustment !== 0 && (
                       <span className={`text-xs ml-1 font-semibold ${feature.priceAdjustment > 0 ? "text-amber-600" : "text-green-600"}`}>
-                        {feature.priceAdjustment > 0 ? "+" : ""}${(feature.priceAdjustment / 100).toFixed(2)}
+                        {feature.priceAdjustment > 0 ? "+" : ""}Rs.{(feature.priceAdjustment / 100).toFixed(2)}
                       </span>
                     )}
                   </span>
@@ -425,12 +532,12 @@ export default function NewProductPage() {
         {/* Price and Inventory */}
         <div className="grid grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Price ($ USD)</label>
+            <label className="block text-sm font-medium text-gray-700">Price (Rs. RUPEES)</label>
             <input
               required
               type="number"
               step="0.01"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+              className={`mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 ${glow("price")}`}
               value={priceInput}
               onChange={(e) => setPriceInput(e.target.value)}
             />
@@ -440,7 +547,7 @@ export default function NewProductPage() {
             <input
               required
               type="number"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+              className={`mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 ${glow("inventoryCount")}`}
               value={inventoryCount}
               onChange={(e) => setInventoryCount(Number(e.target.value))}
             />
@@ -725,6 +832,23 @@ export default function NewProductPage() {
           basePriceDollars={priceInput}
         />
       )}
+
+      {/* ✨ AI Assistant */}
+      <AIAssistant
+        open={showAI}
+        onOpenChange={setShowAI}
+        formContext={{
+          title,
+          description,
+          price: priceInput,
+          inventoryCount,
+          uploadedImageCount: uploadedImages.length,
+          uploadedImageUrls: uploadedImages,
+          categories: categories.map((c) => c.name),
+          existingFeatures: features.map((f) => `${f.type}: ${f.value}`),
+        }}
+        onApplyUpdates={applyAIUpdates}
+      />
     </div>
   );
 }

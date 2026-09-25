@@ -39,7 +39,7 @@ export function CartItem({ item }: CartItemProps) {
             </p>
           )}
           <p className="mt-1 text-sm text-gray-500">
-            ${(item.product.price / 100).toFixed(2)}
+            Rs.{(item.product.price / 100).toFixed(2)}
           </p>
         </div>
         <div className="flex items-center justify-between">

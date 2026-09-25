@@ -188,7 +188,7 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
             </Link>
             <div className="p-4 pt-0 flex items-center justify-between mt-auto">
               <span className="text-xl font-bold text-gray-900">
-                {product.features && product.features.length > 0 ? "From $" : "$"}{(product.price / 100).toFixed(2)}
+                {product.features && product.features.length > 0 ? "From Rs." : "Rs."}{(product.price / 100).toFixed(2)}
               </span>
               {product.features && product.features.length > 0 ? (
                 <Link href={`/products/${product.slug}`}>

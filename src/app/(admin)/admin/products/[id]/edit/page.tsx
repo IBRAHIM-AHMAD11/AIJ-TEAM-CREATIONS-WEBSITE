@@ -225,6 +225,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     if (!product) return;
 
     if (!categoryId) return toast.error("Please select a category!");
+    if (!description.trim()) return toast.error("A product description is required.");
 
     const priceInCents = Math.round(parseFloat(priceInput) * 100);
 
@@ -237,7 +238,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       .reduce((sum, f) => sum + (f.priceAdjustment ?? 0), 0);
 
     if (priceInCents + negativeSum <= 0) {
-      return toast.error("Price would go negative with current adjustments.");
+      return toast.error(
+        `Price would go negative with current adjustments. The lowest possible price is Rs.${((priceInCents + negativeSum) / 100).toFixed(2)}. Increase base price or reduce discounts.`
+      );
     }
 
     setLoading(true);
@@ -259,32 +262,24 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
       toast.success("Product updated successfully!");
       router.push("/admin");
-    } catch (error) {
-      toast.error("Failed to update product.");
+    } catch (error: any) {
+      const errorMessage = error?.message?.toLowerCase() || String(error).toLowerCase();
+
+      if (
+        errorMessage.includes("duplicate") ||
+        errorMessage.includes("already exists") ||
+        errorMessage.includes("slug") ||
+        errorMessage.includes("title") ||
+        errorMessage.includes("unique constraint")
+      ) {
+        toast.error(`A product with the title "${title}" or slug "${slug}" already exists. Please choose a unique name.`);
+      } else {
+        toast.error("Failed to update product. Make sure the title and slug are unique.");
+      }
     } finally {
       setLoading(false);
     }
   };
-
-  if (product === undefined) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <p className="text-slate-400 animate-pulse">Loading product...</p>
-      </div>
-    );
-  }
-
-  if (product === null) {
-    return (
-      <div className="flex h-96 flex-col items-center justify-center gap-4">
-        <h2 className="text-xl font-bold text-red-600">Product Not Found</h2>
-        <p className="text-sm text-slate-500">The product you are trying to edit does not exist.</p>
-        <Button>
-          <Link href="/admin">Back to Dashboard</Link>
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-3xl mx-auto bg-white p-8 rounded-xl border border-gray-100 shadow-sm space-y-8 relative">
@@ -416,7 +411,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     )}
                     {feature.priceAdjustment !== undefined && feature.priceAdjustment !== 0 && (
                       <span className={`text-xs ml-1 font-semibold ${feature.priceAdjustment > 0 ? "text-amber-600" : "text-green-600"}`}>
-                        {feature.priceAdjustment > 0 ? "+" : ""}${(feature.priceAdjustment / 100).toFixed(2)}
+                        {feature.priceAdjustment > 0 ? "+" : ""}Rs.{(feature.priceAdjustment / 100).toFixed(2)}
                       </span>
                     )}
                   </span>
@@ -432,7 +427,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         {/* Price, Stock, Active */}
         <div className="grid grid-cols-3 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Price ($ USD)</label>
+            <label className="block text-sm font-medium text-gray-700">Price (Rs. RUPEES)</label>
             <input
               required
               type="number"

@@ -57,7 +57,7 @@ export default function OrderConfirmationEmail({
                 </Column>
                 <Column align="right">
                   <Text style={{ margin: 0, color: "#3d3a30", fontWeight: "bold" }}>
-                    ${(item.price * item.quantity).toFixed(2)}
+                    Rs.{(item.price * item.quantity).toFixed(2)}
                   </Text>
                 </Column>
               </Row>
@@ -65,7 +65,7 @@ export default function OrderConfirmationEmail({
             <Hr style={{ borderColor: "#efe6cc", margin: "15px 0" }} />
             <Row>
               <Column><Text style={{ margin: 0, fontWeight: "bold", color: "#3d3a30" }}>Total</Text></Column>
-              <Column align="right"><Text style={{ margin: 0, fontWeight: "bold", color: "#3d3a30" }}>${total.toFixed(2)}</Text></Column>
+              <Column align="right"><Text style={{ margin: 0, fontWeight: "bold", color: "#3d3a30" }}>Rs.{total.toFixed(2)}</Text></Column>
             </Row>
           </Section>
 

@@ -109,7 +109,7 @@ export function CartSheet() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">Subtotal</span>
                 <span className="font-semibold text-gray-900">
-                  ${(total / 100).toFixed(2)}
+                  Rs.{(total / 100).toFixed(2)}
                 </span>
               </div>
               <p className="text-xs text-gray-400">

@@ -895,7 +895,7 @@ export function FeatureSelectionModal({ onClose, onSave, basePriceDollars }: Fea
                 Price adjustment <span className="font-normal lowercase text-gray-400">optional</span>
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">Rs.</span>
                 <input
                   type="number"
                   step="0.01"
@@ -912,7 +912,7 @@ export function FeatureSelectionModal({ onClose, onSave, basePriceDollars }: Fea
                 if (base > 0 && adj !== 0) {
                   return (
                     <p className={`text-[10px] mt-0.5 ${effective <= 0 ? "text-red-500 font-semibold" : "text-gray-400"}`}>
-                      Effective price: ${effective.toFixed(2)} {effective <= 0 ? "⚠️ Total would be zero or negative" : ""}
+                      Effective price: Rs.{effective.toFixed(2)} {effective <= 0 ? "⚠️ Total would be zero or negative" : ""}
                     </p>
                   );
                 }

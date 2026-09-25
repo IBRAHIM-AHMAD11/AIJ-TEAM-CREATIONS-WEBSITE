@@ -46,7 +46,7 @@ export default function RecentlyViewed({ products }: RecentlyViewedProps) {
               {product.title}
             </p>
             <p className="text-xs text-slate-500">
-              ${(product.price / 100).toFixed(2)}
+              Rs.{(product.price / 100).toFixed(2)}
             </p>
           </Link>
         ))}

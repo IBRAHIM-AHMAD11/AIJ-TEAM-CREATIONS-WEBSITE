@@ -79,11 +79,11 @@ const OrdersPage = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{item.title}</p>
                       <p className="text-xs text-gray-500">
-                        Qty: {item.quantity} &times; ${(item.price / 100).toFixed(2)}
+                        Qty: {item.quantity} &times; Rs.{(item.price / 100).toFixed(2)}
                       </p>
                     </div>
                     <p className="text-sm font-medium text-gray-900">
-                      ${((item.price * item.quantity) / 100).toFixed(2)}
+                      Rs.{((item.price * item.quantity) / 100).toFixed(2)}
                     </p>
                   </div>
                 ))}
@@ -95,7 +95,7 @@ const OrdersPage = () => {
                   Ship to: {order.shippingAddress.name}, {order.shippingAddress.city}
                 </div>
                 <p className="text-base font-bold text-gray-900">
-                  ${(order.total / 100).toFixed(2)}
+                  Rs.{(order.total / 100).toFixed(2)}
                 </p>
               </div>
             </CardContent>
