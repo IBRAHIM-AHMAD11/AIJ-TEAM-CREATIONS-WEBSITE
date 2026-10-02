@@ -67,32 +67,66 @@ const FIELD_META: Record<string, { label: string; icon: string }> = {
   features: { label: "Features", icon: "🧩" },
 };
 
-const QUICK_ACTIONS = [
+const ACTIONS = [
   {
-    label: "🚀 Auto-fill from photos",
-    needsFormImages: true,
+    id: "analyze",
+    icon: "🚀",
+    label: "Auto-fill all fields",
+    hint: "Analyze photos & fill the whole form",
+    needsImages: true,
     message:
-      "Analyze my product images and auto-fill this listing (title, description, price, category, and features). Ask me about anything you can't determine from the photos.",
+      "Analyze the product image(s) and auto-fill this listing: title, description, price in Rs, category, and features. Ask me about anything you can't determine from the photos.",
   },
   {
-    label: "✍️ Write description",
-    needsFormImages: false,
-    message: "Write a compelling markdown product description for this product based on everything you know about it.",
+    id: "title",
+    icon: "🏷️",
+    label: "Suggest Title",
+    hint: "Generate a product title",
+    needsImages: false,
+    message: "Suggest a specific, searchable, brand-style product title for this product.",
   },
   {
-    label: "💰 Suggest a price",
-    needsFormImages: false,
-    message: "Suggest a fair, competitive market price in Rs for this product, with a one-line justification.",
+    id: "description",
+    icon: "✍️",
+    label: "Suggest Description",
+    hint: "Write a markdown description",
+    needsImages: false,
+    message:
+      "Write a compelling markdown product description (80–160 words, ending with a '## Highlights' bullet list).",
   },
   {
-    label: "🧩 Suggest features",
-    needsFormImages: false,
-    message: "Suggest display features for this product (colors as CSS hex, materials, sizes, dimensions, finish).",
+    id: "price",
+    icon: "💰",
+    label: "Suggest Price",
+    hint: "Suggest a price in Rs",
+    needsImages: false,
+    message: "Suggest a fair, competitive market price in Rs for this product with a one-line justification.",
   },
   {
-    label: "🗂️ Pick a category",
-    needsFormImages: false,
-    message: "Which category fits this product best? Prefer one of my existing categories if any fits.",
+    id: "features",
+    icon: "🧩",
+    label: "Suggest Features",
+    hint: "Propose colors, materials, sizes…",
+    needsImages: false,
+    message:
+      "Suggest display features for this product: color (CSS hex), material, size, dimensions (value like 30x45x20 + unit), and finish. Only include what you can verify or reasonably infer.",
+  },
+  {
+    id: "category",
+    icon: "🗂️",
+    label: "Suggest Category",
+    hint: "Pick or create a category",
+    needsImages: false,
+    message:
+      "Which category fits this product best? Prefer one of my existing categories; only propose a new one if nothing fits.",
+  },
+  {
+    id: "stock",
+    icon: "📦",
+    label: "Suggest Stock",
+    hint: "Suggest a stock count",
+    needsImages: false,
+    message: "Suggest a sensible default stock count for this kind of product, and ask me if it should vary.",
   },
 ];
 
@@ -150,8 +184,7 @@ export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }:
         {
           id: "welcome",
           role: "assistant",
-          text:
-            "Hey! 👋 I'm Listing Copilot, powered by Gemini.\n\nDrop a product photo below (or hit \"Auto-fill from photos\") and I'll draft the title, description, price, category and features. Anything I can't tell from the photo, I'll just ask you.",
+          text: "Hey! 👋 I'm Listing Copilot, powered by Gemini.\n\nDrop a product photo below, or use the action buttons (🚀 Auto-fill all, ✍️ Description, 🧩 Features…) to fill the form fast. Anything I can't tell from the photo, I'll just ask you.",
           appliedIndices: [],
         },
       ]);
@@ -236,6 +269,24 @@ export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }:
     }
   };
 
+  const runAction = (action: (typeof ACTIONS)[number]) => {
+    if (sending) return;
+
+    const hasChatImages = attachments.length > 0;
+    const hasFormImages = formContext.uploadedImageUrls.length > 0;
+
+    if (action.needsImages && !hasChatImages && !hasFormImages) {
+      toast.error("Add a photo first — attach one here (📎) or upload product images in the form.");
+      return;
+    }
+
+    handleSend({
+      message: action.message,
+      // pass form images as visual context when the user hasn't attached any in chat
+      useFormImages: !hasChatImages && hasFormImages,
+    });
+  };
+
   const applyOne = async (msgId: string, index: number) => {
     const msg = messages.find((m) => m.id === msgId);
     const update = msg?.updates?.[index];
@@ -295,23 +346,6 @@ export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }:
               ✕
             </button>
           </div>
-
-          {/* Quick actions */}
-          {messages.length <= 1 && !sending && (
-            <div className="flex flex-wrap gap-1.5 border-b border-slate-800 p-3">
-              {QUICK_ACTIONS.map((a) => (
-                <button
-                  key={a.label}
-                  type="button"
-                  onClick={() => handleSend({ message: a.message, useFormImages: a.needsFormImages })}
-                  className="rounded-full border border-slate-700 bg-slate-800/70 px-3 py-1.5 text-[11px] font-medium text-slate-200 transition hover:border-indigo-500 hover:text-white"
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* Messages */}
           <div className="relative min-h-0 flex-1">
             <div
@@ -425,6 +459,22 @@ export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }:
 
           {/* Composer */}
           <div className="space-y-2 border-t border-slate-700/70 p-3">
+            {/* ⚡ AI action buttons */}
+            <div className="flex flex-wrap gap-1.5">
+              {ACTIONS.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  disabled={sending}
+                  onClick={() => runAction(a)}
+                  title={a.hint}
+                  className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/70 px-2.5 py-1.5 text-[11px] font-medium text-slate-200 transition hover:border-indigo-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span>{a.icon}</span>
+                  <span>{a.label}</span>
+                </button>
+              ))}
+            </div>
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {attachments.map((a, i) => (
