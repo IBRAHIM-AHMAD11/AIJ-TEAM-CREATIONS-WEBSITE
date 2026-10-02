@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { use } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { AIAssistant, type AIUpdate } from "../../../AIAssistant";
 
 import { Button } from "@/components/ui/button";
 import { FeatureSelectionModal } from "../../../FeatureSelectionModal";
@@ -59,8 +60,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
 
+  const [showAI, setShowAI] = useState(false); // suggest false here — edit = tweaking, the ✨ pill is enough. true works too if you prefer.
+  const [recentlyFilled, setRecentlyFilled] = useState<string[]>([]);
+  const hydratedForRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!product) return;
+    if (hydratedForRef.current === (product._id as string)) return; // 👈 don't wipe unsaved edits
+    hydratedForRef.current = product._id as string;
     setTitle(product.title);
     setSlug(product.slug);
     setDescription(product.description);
@@ -198,6 +205,96 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     setFeatures((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
+  const flashFields = (fields: string[]) => {
+    setRecentlyFilled(fields);
+    window.setTimeout(() => setRecentlyFilled([]), 2600);
+  };
+
+  const applyAIUpdates = async (updates: AIUpdate[]) => {
+    const touched: string[] = [];
+
+    for (const u of updates) {
+      switch (u.field) {
+        case "title": {
+          const v = u.stringValue?.trim();
+          if (v) {
+            setTitle(v);
+            setSlug(convertToSlug(v));
+            touched.push("title", "slug");
+          }
+          break;
+        }
+        case "slug": {
+          const v = u.stringValue?.trim();
+          if (v) { setSlug(convertToSlug(v)); touched.push("slug"); }
+          break;
+        }
+        case "description": {
+          const v = u.stringValue?.trim();
+          if (v) { setDescription(v); touched.push("description"); }
+          break;
+        }
+        case "price":
+          if (typeof u.numberValue === "number" && u.numberValue > 0) {
+            setPriceInput(String(u.numberValue));
+            touched.push("price");
+          }
+          break;
+        case "inventoryCount":
+          if (typeof u.numberValue === "number" && u.numberValue >= 0) {
+            setInventoryCount(Math.round(u.numberValue));
+            touched.push("inventoryCount");
+          }
+          break;
+        case "category": {
+          const v = u.stringValue?.trim();
+          if (!v) break;
+          const match = categories.find((c) => c.name.toLowerCase() === v.toLowerCase());
+          if (match) {
+            setCategoryId(match._id as unknown as string);
+            touched.push("category");
+          } else {
+            try {
+              const newId = await createCategory({ name: v, slug: convertToSlug(v) });
+              setCategoryId(newId as unknown as string);
+              toast.success(`Category "${v}" created & selected`);
+              touched.push("category");
+            } catch {
+              toast.error("Couldn't create that category.");
+            }
+          }
+          break;
+        }
+        case "features": {
+          if (u.features?.length) {
+            const mapped = u.features.map((f) => ({
+              type: f.type,
+              label: f.label,
+              value: f.value,
+              unit: f.unit,
+              priceAdjustment:
+                f.priceAdjustmentRupees !== undefined ? Math.round(f.priceAdjustmentRupees * 100) : undefined,
+            }));
+            setFeatures((prev) => {
+              const keys = new Set(prev.map((f) => `${f.type}:${f.value.toLowerCase()}`));
+              const fresh = mapped.filter((f) => !keys.has(`${f.type}:${f.value.toLowerCase()}`));
+              return fresh.length ? [...prev, ...fresh] : prev;
+            });
+            touched.push("features");
+          }
+          break;
+        }
+      }
+    }
+
+    if (touched.length) {
+      flashFields(touched);
+      toast.success(`✨ AI filled ${touched.length} field${touched.length > 1 ? "s" : ""}`);
+    }
+  };
+
+  const glow = (field: string) => (recentlyFilled.includes(field) ? "ai-glow" : "");
+
   const insertMarkdown = (prefix: string, suffix: string = "") => {
     const textarea = document.getElementById("markdown-editor") as HTMLTextAreaElement;
     if (!textarea) return;
@@ -303,7 +400,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           <input
             required
             type="text"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${glow("title")}`}
             value={title}
             onChange={handleTitleChange}
             placeholder="e.g. Vintage Leather Jacket"
@@ -318,7 +415,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           <input
             required
             type="text"
-            className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-gray-600 font-mono text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className={`mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-gray-600 font-mono text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${glow("slug")}`}
             value={slug}
             onChange={handleSlugChange}
           />
@@ -338,7 +435,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           </div>
           <select
             required
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white"
+            className={`block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white ${glow("category")}`}
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
           >
@@ -364,7 +461,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           <textarea
             required
             rows={4}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 font-mono text-sm bg-gray-50"
+            className={`mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 font-mono text-sm bg-gray-50 ${glow("description")}`}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Write a brief description or open the editor for formatting..."
@@ -372,7 +469,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Features */}
-        <div className="p-4 border rounded-md bg-gray-50">
+        <div className={`p-4 border rounded-md bg-gray-50 ${glow("features")}`}>
           <div className="flex justify-between items-center mb-3">
             <label className="block text-sm font-medium text-gray-700">Display Features</label>
             <button
@@ -432,7 +529,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               required
               type="number"
               step="0.01"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+              className={`mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 ${glow("price")}`}
               value={priceInput}
               onChange={(e) => setPriceInput(e.target.value)}
             />
@@ -442,7 +539,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             <input
               required
               type="number"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+              className={`mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 ${glow("inventoryCount")}`}
               value={inventoryCount}
               onChange={(e) => setInventoryCount(Number(e.target.value))}
             />
@@ -693,6 +790,22 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           basePriceDollars={priceInput}
         />
       )}
+      {/* ✨ AI Assistant */}
+      <AIAssistant
+        open={showAI}
+        onOpenChange={setShowAI}
+        formContext={{
+          title,
+          description,
+          price: priceInput,
+          inventoryCount,
+          uploadedImageCount: uploadedImages.length,
+          uploadedImageUrls: uploadedImages,
+          categories: categories.map((c) => c.name),
+          existingFeatures: features.map((f) => `${f.type}: ${f.value}`),
+        }}
+        onApplyUpdates={applyAIUpdates}
+      />
     </div>
   );
 }
