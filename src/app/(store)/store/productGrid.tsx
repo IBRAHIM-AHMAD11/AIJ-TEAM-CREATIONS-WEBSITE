@@ -83,17 +83,14 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-6">
-        {[...Array(4)].map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <div className="animate-pulse bg-gray-200 h-80 rounded-lg" />
-          </motion.div>
-        ))}
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+              <div className="animate-pulse bg-gray-200 h-80 rounded-lg" />
+            </motion.div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -136,7 +133,7 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
                       alt={product.title}
                       fill
                       className={`object-cover transition-all duration-300 group-hover:scale-105 ${product.images[1] ? "group-hover:opacity-0" : ""}`}
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     />
                     {product.images[1] && (
                       <Image
@@ -144,13 +141,13 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
                         alt={`${product.title} alternate view`}
                         fill
                         className="object-cover opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-105"
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                       />
                     )}
                   </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <Image src="/placeholder-product.jpg" alt={product.title} fill className="object-cover" />
+                    <Image src="/placeholder-product.jpg" alt={product.title} fill sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover" />
                   </div>
                 )}
                 <button
@@ -171,7 +168,7 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
                   {product.title}
                 </h3>
                 {/* 👇 Markdown rendered description */}
-                <div className="text-sm text-gray-500 mt-1 line-clamp-2 prose prose-sm max-w-none">
+                <div className="text-sm text-gray-500 mt-1 line-clamp-2 prose prose-sm max-w-none *:my-0">
                   <ReactMarkdown
                     components={{
                       a: ({ children, ...props }) => (
@@ -186,20 +183,20 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
                 </div>
               </div>
             </Link>
-            <div className="p-4 pt-0 flex items-center justify-between mt-auto">
-              <span className="text-xl font-bold text-gray-900">
+            <div className="p-4 pt-0 mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <span className="text-xl font-bold text-gray-900 whitespace-nowrap">
                 {product.features && product.features.length > 0 ? "From Rs." : "Rs."}{(product.price / 100).toFixed(2)}
               </span>
               {product.features && product.features.length > 0 ? (
-                <Link href={`/products/${product.slug}`}>
-                  <Button className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
+                <Link href={`/products/${product.slug}`} className="shrink-0">
+                  <Button className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap">
                     Select Options
                   </Button>
                 </Link>
               ) : (
                 <Button
                   variant="outline"
-                  className="text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                  className="text-white px-3 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap shrink-0"
                   onClick={() => {
                     addToCart({ productId: product._id, quantity: 1 });
                     setCartOpen(true);

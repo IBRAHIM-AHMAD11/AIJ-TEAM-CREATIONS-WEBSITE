@@ -54,7 +54,7 @@ export function OrdersStats({ orders, itemAnim }: OrdersStatsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-900">
-              ${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              Rs.{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-slate-400 mt-1">From paid orders only</p>
           </CardContent>
