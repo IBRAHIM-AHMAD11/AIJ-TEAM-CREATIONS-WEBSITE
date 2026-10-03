@@ -29,6 +29,7 @@ export interface AIFormContext {
   uploadedImageUrls: string[];
   categories: string[];
   existingFeatures: string[];
+  features?: { type: string; label: string; value: string; unit?: string }[];
 }
 
 interface Attachment {
@@ -52,6 +53,7 @@ interface AIAssistantProps {
   onOpenChange: (open: boolean) => void;
   formContext: AIFormContext;
   onApplyUpdates: (updates: AIUpdate[]) => Promise<void> | void;
+  onAddGeneratedImages?: (dataUrls: string[]) => Promise<void>;
 }
 
 /* ----------------------------- Constants ----------------------------- */
@@ -128,9 +130,42 @@ const ACTIONS = [
     needsImages: false,
     message: "Suggest a sensible default stock count for this kind of product, and ask me if it should vary.",
   },
+  {
+    id: "variants",
+    icon: "🎨",
+    label: "Variants",
+    hint: "AI-generate photos for each color/size",
+    needsImages: false,
+    message: "",
+  },
 ];
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+const VARIANT_SETTINGS = {
+  BETWEEN_JOBS_MS: 3000, // pause between generations
+  MAX_ATTEMPTS: 3,       // retries per image
+  BACKOFF_MS: 12000,     // wait after a 429: 12s → 24s → 36s
+};
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+interface VariantJob {
+  id: string;
+  label: string;
+  swatch?: string;
+  instruction: string;
+  status: "queued" | "generating" | "waiting" | "done" | "error";
+  image?: string;
+  error?: string;
+  added?: boolean;
+}
+interface VariantBase {
+  source: "chat" | "form";
+  preview: string;
+  mimeType?: string;
+  data?: string;
+  url?: string;
+}
 
 /* ---------------------------- Image helper ---------------------------- */
 
@@ -168,7 +203,7 @@ function previewValue(u: AIUpdate): string {
 
 /* ----------------------------- Component ----------------------------- */
 
-export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }: AIAssistantProps) {
+export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates, onAddGeneratedImages }: AIAssistantProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -177,6 +212,15 @@ export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }:
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [showVariantPicker, setShowVariantPicker] = useState(false);
+  const [variantSelection, setVariantSelection] = useState<Record<string, boolean>>({});
+  const [variantJobs, setVariantJobs] = useState<VariantJob[]>([]);
+  const [variantBusy, setVariantBusy] = useState(false);
+  const variantBaseRef = useRef<VariantBase | null>(null);
+
+  const variantFeatures = (formContext.features ?? []).filter((f) => f.type === "color" || f.type === "size");
+  const doneUnaddedCount = variantJobs.filter((j) => j.status === "done" && !j.added).length;
 
   useEffect(() => {
     if (open && messages.length === 0) {
@@ -285,6 +329,120 @@ export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }:
       // pass form images as visual context when the user hasn't attached any in chat
       useFormImages: !hasChatImages && hasFormImages,
     });
+  };
+
+  const getVariantBase = (): VariantBase | null => {
+    if (attachments[0]) {
+      return { source: "chat", preview: attachments[0].preview, mimeType: attachments[0].mimeType, data: attachments[0].data };
+    }
+    const url = formContext.uploadedImageUrls[0];
+    return url ? { source: "form", preview: url, url } : null;
+  };
+
+  const buildInstruction = (f: { type: string; label: string; value: string; unit?: string }): string => {
+    if (f.type === "color") {
+      return `Change the product's main color to "${f.label}" (target color: ${f.value}). Recolor the main body/material only — keep hardware, buttons, soles and trims unchanged.`;
+    }
+    const sizeText = f.unit ? `${f.value} ${f.unit}` : f.value;
+    return `Show the same product in size ${f.label} (${sizeText}). Keep styling, background, lighting and camera angle identical.`;
+  };
+
+  const processVariantJob = async (jobId: string, instruction: string) => {
+    const base = variantBaseRef.current ?? getVariantBase();
+    const updateJob = (patch: Partial<VariantJob>) =>
+      setVariantJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, ...patch } : j)));
+
+    if (!base) {
+      updateJob({ status: "error", error: "No base photo found." });
+      return;
+    }
+
+    for (let attempt = 1; attempt <= VARIANT_SETTINGS.MAX_ATTEMPTS; attempt++) {
+      updateJob({ status: "generating", error: undefined });
+      try {
+        const res = await fetch("/api/ai/generate-variant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            instruction,
+            baseImage: base.data ? { mimeType: base.mimeType, data: base.data } : undefined,
+            baseImageUrl: base.url,
+          }),
+        });
+        const data = await res.json();
+
+        if (res.status === 429) {
+          if (attempt < VARIANT_SETTINGS.MAX_ATTEMPTS) {
+            updateJob({ status: "waiting", error: "Rate limited — auto-retrying…" });
+            await sleep(VARIANT_SETTINGS.BACKOFF_MS * attempt);
+            continue;
+          }
+          throw new Error("Rate limited too many times. Wait a minute, then hit Retry.");
+        }
+        if (!res.ok) throw new Error(data?.error || "Generation failed.");
+
+        updateJob({ status: "done", image: data.image, error: undefined });
+        return;
+      } catch (err: any) {
+        if (attempt >= VARIANT_SETTINGS.MAX_ATTEMPTS) {
+          updateJob({ status: "error", error: err?.message || "Failed" });
+          return;
+        }
+        await sleep(4000 * attempt);
+      }
+    }
+  };
+
+  const openVariantPicker = () => {
+    if (variantFeatures.length === 0) {
+      return toast.error("Add color or size features first — use the 🧩 Features button.");
+    }
+    if (!getVariantBase()) {
+      return toast.error("Add a product photo first (form upload or 📎 attach one here).");
+    }
+    setVariantSelection(Object.fromEntries(variantFeatures.map((f) => [`${f.type}:${f.label}`, true])));
+    setShowVariantPicker(true);
+  };
+
+  const startVariantBatch = async () => {
+    if (variantBusy) return toast.error("A batch is already running — let it finish first.");
+    const selected = variantFeatures.filter((f) => variantSelection[`${f.type}:${f.label}`]);
+    if (selected.length === 0) return toast.error("Pick at least one variant.");
+    const base = getVariantBase();
+    if (!base) return toast.error("No base photo — add a product image first.");
+
+    variantBaseRef.current = base; // lock the base for the whole batch
+    setShowVariantPicker(false);
+    setVariantBusy(true);
+
+    const jobs: VariantJob[] = selected.map((f) => ({
+      id: uid(),
+      label: f.label,
+      swatch: f.type === "color" ? f.value : undefined,
+      instruction: buildInstruction(f),
+      status: "queued",
+    }));
+    setVariantJobs((prev) => [...prev, ...jobs]);
+
+    // 🔁 Sequential queue with pacing — one image at a time, respects rate limits
+    for (const job of jobs) {
+      await processVariantJob(job.id, job.instruction);
+      await sleep(VARIANT_SETTINGS.BETWEEN_JOBS_MS);
+    }
+    setVariantBusy(false);
+  };
+
+  const addGeneratedImages = async (ids: string[]) => {
+    if (!onAddGeneratedImages) return toast.error("Image adding isn't wired on this page.");
+    const jobs = variantJobs.filter((j) => ids.includes(j.id) && j.status === "done" && !j.added && j.image);
+    if (jobs.length === 0) return;
+    try {
+      await onAddGeneratedImages(jobs.map((j) => j.image!));
+      setVariantJobs((prev) => prev.map((j) => (ids.includes(j.id) ? { ...j, added: true } : j)));
+      toast.success(`✨ Added ${jobs.length} image${jobs.length > 1 ? "s" : ""} to the product gallery`);
+    } catch {
+      toast.error("Failed to add the images. Try again.");
+    }
   };
 
   const applyOne = async (msgId: string, index: number) => {
@@ -457,6 +615,113 @@ export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }:
             )}
           </div>
 
+          {showVariantPicker && (
+            <div className="space-y-2 border-t border-slate-700/70 bg-slate-900/80 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">🎨 Generate variant photos</span>
+                <button type="button" onClick={() => setShowVariantPicker(false)} className="text-slate-400 hover:text-white">✕</button>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Each checked variant gets one AI-edited photo. Base photo: {attachments[0] ? "your chat attachment" : "1st product image"}. Runs one at a time to respect rate limits.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {variantFeatures.map((f) => {
+                  const key = `${f.type}:${f.label}`;
+                  const checked = variantSelection[key];
+                  return (
+                    <label
+                      key={key}
+                      className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition ${
+                        checked ? "border-indigo-500 bg-indigo-500/15 text-white" : "border-slate-700 bg-slate-800/70 text-slate-300"
+                      }`}
+                    >
+                      <input type="checkbox" className="hidden" checked={!!checked} onChange={() => setVariantSelection((p) => ({ ...p, [key]: !p[key] }))} />
+                      {f.type === "color" && <span className="h-3 w-3 rounded-full border border-slate-500" style={{ backgroundColor: f.value }} />}
+                      {f.label}
+                    </label>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={startVariantBatch}
+                className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+              >
+                ✨ Generate {Object.values(variantSelection).filter(Boolean).length} image(s)
+              </button>
+            </div>
+          )}
+
+          {variantJobs.length > 0 && (
+            <div className="border-t border-slate-700/70 p-3">
+              <div className="mb-2 flex items-center gap-2">
+                {variantBaseRef.current && (
+                  <img src={variantBaseRef.current.preview} alt="base" className="h-6 w-6 rounded border border-slate-600 object-cover" />
+                )}
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                  Variant photos {variantBusy && <span className="ml-1 animate-pulse normal-case text-indigo-400">generating…</span>}
+                </span>
+                <span className="ml-auto flex items-center gap-2">
+                  {doneUnaddedCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => addGeneratedImages(variantJobs.filter((j) => j.status === "done" && !j.added).map((j) => j.id))}
+                      className="rounded-md bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/30"
+                    >
+                      ＋ Add all ({doneUnaddedCount})
+                    </button>
+                  )}
+                  {!variantBusy && (
+                    <button type="button" onClick={() => setVariantJobs([])} className="text-slate-400 hover:text-white">✕</button>
+                  )}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {variantJobs.map((job) => (
+                  <div key={job.id} className="rounded-lg border border-slate-700 bg-slate-900/60 p-2">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                      {job.swatch && <span className="h-3 w-3 shrink-0 rounded-full border border-slate-500" style={{ backgroundColor: job.swatch }} />}
+                      <span className="truncate text-xs font-medium text-slate-200">{job.label}</span>
+                      <span className="ml-auto shrink-0 text-[10px]">
+                        {job.status === "queued" && <span className="text-slate-500">⏳ queued</span>}
+                        {job.status === "generating" && <span className="animate-pulse text-indigo-300">✨ generating</span>}
+                        {job.status === "waiting" && <span className="text-amber-400">⏱ retrying</span>}
+                        {job.status === "error" && <span className="text-red-400" title={job.error}>failed</span>}
+                        {job.status === "done" && !job.added && <span className="text-emerald-400">ready</span>}
+                        {job.added && <span className="text-emerald-400">✓ added</span>}
+                      </span>
+                    </div>
+                    {job.image ? (
+                      <img src={job.image} alt={job.label} className="h-28 w-full rounded-md border border-slate-700 object-cover" />
+                    ) : (
+                      <div className="flex h-28 w-full items-center justify-center rounded-md border border-slate-700 bg-slate-800 text-2xl text-slate-600">
+                        {job.status === "error" ? "⚠️" : job.status === "waiting" ? "⏱" : "✨"}
+                      </div>
+                    )}
+                    {job.status === "error" && !variantBusy && (
+                      <button
+                        type="button"
+                        onClick={() => processVariantJob(job.id, job.instruction)}
+                        className="mt-1.5 w-full rounded-md border border-slate-600 py-1 text-[11px] text-slate-300 hover:bg-slate-800"
+                      >
+                        ↻ Retry
+                      </button>
+                    )}
+                    {job.status === "done" && !job.added && (
+                      <button
+                        type="button"
+                        onClick={() => addGeneratedImages([job.id])}
+                        className="mt-1.5 w-full rounded-md bg-indigo-500/90 py-1 text-[11px] font-semibold text-white hover:bg-indigo-400"
+                      >
+                        ＋ Add to product images
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Composer */}
           <div className="space-y-2 border-t border-slate-700/70 p-3">
             {/* ⚡ AI action buttons */}
@@ -466,7 +731,7 @@ export function AIAssistant({ open, onOpenChange, formContext, onApplyUpdates }:
                   key={a.id}
                   type="button"
                   disabled={sending}
-                  onClick={() => runAction(a)}
+                  onClick={() => (a.id === "variants" ? openVariantPicker() : runAction(a))}
                   title={a.hint}
                   className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/70 px-2.5 py-1.5 text-[11px] font-medium text-slate-200 transition hover:border-indigo-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                 >

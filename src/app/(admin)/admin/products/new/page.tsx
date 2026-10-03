@@ -217,6 +217,24 @@ export default function NewProductPage() {
     setFeatures((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
+  const handleAddGeneratedImages = async (dataUrls: string[]) => {
+    let added = 0;
+    for (const dataUrl of dataUrls) {
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `ai-variant-${Date.now()}-${added}.png`, { type: blob.type || "image/png" });
+      const postUrl = await generateUploadUrl();
+      const result = await fetch(postUrl, { method: "POST", headers: { "Content-Type": file.type }, body: file });
+      if (!result.ok) throw new Error("Upload failed");
+      const { storageId } = await result.json();
+      const url = await getImageUrl({ storageId });
+      if (url) {
+        setUploadedImages((prev) => [...prev, url]);
+        added++;
+      }
+    }
+    if (added === 0) throw new Error("No images uploaded");
+  };
+
   const flashFields = (fields: string[]) => {
     setRecentlyFilled(fields);
     window.setTimeout(() => setRecentlyFilled([]), 2600);
@@ -846,8 +864,10 @@ export default function NewProductPage() {
           uploadedImageUrls: uploadedImages,
           categories: categories.map((c) => c.name),
           existingFeatures: features.map((f) => `${f.type}: ${f.value}`),
+          features: features.map((f) => ({ type: f.type, label: f.label, value: f.value, unit: f.unit })),
         }}
         onApplyUpdates={applyAIUpdates}
+        onAddGeneratedImages={handleAddGeneratedImages}
       />
     </div>
   );
