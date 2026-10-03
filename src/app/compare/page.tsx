@@ -9,7 +9,7 @@ import Breadcrumbs from "@/components/ui/breadcrumbs";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import ReactMarkdown from "react-markdown"; // 👈 NEW
+import ReactMarkdown from "react-markdown";
 
 export default function ComparePage() {
   const [compareIds] = useAtom(compareIdsAtom);
@@ -49,64 +49,69 @@ export default function ComparePage() {
       </motion.h1>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full border-separate border-spacing-0">
           <thead>
             <tr>
-              <th className="text-left text-sm font-semibold text-slate-500 p-3 w-32" />
+              <th className="sticky left-0 z-10 w-32 bg-white p-3 text-left align-top text-sm font-semibold text-slate-500 border-b border-slate-200" />
               {products.map((p) => (
-                <th key={p._id} className="p-3 min-w-[200px]">
-                  <div className="aspect-square bg-slate-100 rounded-lg overflow-hidden relative mb-3">
+                <th key={p._id} className="min-w-[200px] p-3 align-top border-b border-slate-200">
+                  <div className="relative mx-auto mb-3 h-44 w-44 overflow-hidden rounded-lg bg-slate-100">
                     {p.images?.[0] ? (
-                      <Image src={p.images[0]} alt={p.title} fill className="object-cover" sizes="200px" />
+                      <Image src={p.images[0]} alt={p.title} fill className="object-cover" sizes="176px" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-300">
+                      <div className="flex h-full w-full items-center justify-center text-slate-300">
                         <svg className="size-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                       </div>
                     )}
                   </div>
-                  <Link href={`/products/${p.slug}`} className="text-sm font-semibold text-slate-800 hover:text-blue-600 transition-colors line-clamp-1">
+                  <Link href={`/products/${p.slug}`} className="block text-center text-sm font-semibold text-slate-800 hover:text-blue-600 transition-colors line-clamp-1">
                     {p.title}
                   </Link>
-                  <p className="text-lg font-bold text-slate-900 mt-1">${(p.price / 100).toFixed(2)}</p>
+                  <p className="mt-1 text-center text-lg font-bold text-slate-900">Rs.{(p.price / 100).toFixed(2)}</p>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {/* 👇 Description row – markdown rendered */}
-            <tr className="border-t border-slate-200">
-              <td className="text-sm font-semibold text-slate-500 p-3">Description</td>
+            {/* Description row */}
+            <tr>
+              <td className="sticky left-0 z-10 bg-white p-3 align-top border-b border-slate-200 text-sm font-semibold text-slate-500">Description</td>
               {products.map((p) => (
-                <td key={p._id} className="text-sm text-slate-600 p-3">
+                <td key={p._id} className="p-3 align-top border-b border-slate-200 text-sm text-slate-600">
                   <div className="prose prose-sm max-w-none">
                     <ReactMarkdown>{p.description}</ReactMarkdown>
                   </div>
                 </td>
               ))}
             </tr>
-            <tr className="border-t border-slate-200">
-              <td className="text-sm font-semibold text-slate-500 p-3">Stock</td>
+            {/* Stock row */}
+            <tr>
+              <td className="sticky left-0 z-10 bg-white p-3 align-top border-b border-slate-200 text-sm font-semibold text-slate-500">Stock</td>
               {products.map((p) => (
-                <td key={p._id} className="text-sm p-3">
+                <td key={p._id} className="p-3 align-top border-b border-slate-200 text-sm">
                   <span className={p.inventoryCount > 0 ? "text-green-600" : "text-red-500"}>
                     {p.inventoryCount > 0 ? `In Stock (${p.inventoryCount})` : "Out of Stock"}
                   </span>
                 </td>
               ))}
             </tr>
+            {/* Feature rows */}
             {allFeatures.map((featureKey) => {
-              const [type, label] = featureKey.split(":");
+              const [type, ...rest] = featureKey.split(":");
+              const label = rest.join(":");
               return (
-                <tr key={featureKey} className="border-t border-slate-200">
-                  <td className="text-sm font-semibold text-slate-500 p-3 capitalize">{label}</td>
+                <tr key={featureKey}>
+                  <td className="sticky left-0 z-10 bg-white p-3 align-top border-b border-slate-200 text-sm font-semibold text-slate-500 capitalize">{label}</td>
                   {products.map((p) => {
                     const f = (p.features ?? []).find((fe) => fe.type === type && fe.label === label);
                     return (
-                      <td key={p._id} className="text-sm text-slate-600 p-3">
+                      <td key={p._id} className="p-3 align-top border-b border-slate-200 text-sm text-slate-600">
                         {f ? (
                           <span>
-                            {f.value}
-                            {f.priceAdjustment ? ` (${f.priceAdjustment > 0 ? "+" : ""}$${(f.priceAdjustment / 100).toFixed(2)})` : ""}
+                            {f.type === "dimension"
+                              ? f.value.split("x").map((part) => `${part.trim()}${f.unit ?? ""}`).join(" × ")
+                              : f.value}
+                            {f.priceAdjustment ? ` (${f.priceAdjustment > 0 ? "+" : ""}Rs.${(f.priceAdjustment / 100).toFixed(2)})` : ""}
                           </span>
                         ) : (
                           <span className="text-slate-300">-</span>
