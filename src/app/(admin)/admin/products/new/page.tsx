@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 // Components
 import { FeatureSelectionModal } from "../../FeatureSelectionModal";
+import { Id } from "../../../../../../convex/_generated/dataModel";
 
 type FeatureType = "color" | "size" | "material" | "dimension" | "finish" | "custom";
 
@@ -345,54 +346,58 @@ export default function NewProductPage() {
     }, 0);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!categoryId) return toast.message("Please select or create a category first!");
-    if (!description.trim()) return toast.error("A product description is required.");
+  const allowDrafts = process.env.NEXT_PUBLIC_ALLOW_DRAFTS === "true";
 
-    const priceInCents = Math.round(parseFloat(priceInput) * 100);
+  const saveProduct = async (asDraft: boolean) => {
+    const priceInCents = priceInput ? Math.round(parseFloat(priceInput) * 100) : 0;
 
-    if (isNaN(priceInCents) || priceInCents <= 0) {
-      return toast.error("Please enter a valid base price.");
-    }
-
-    const negativeSum = features
-      .filter((f) => f.priceAdjustment !== undefined && f.priceAdjustment < 0)
-      .reduce((sum, f) => sum + (f.priceAdjustment ?? 0), 0);
-
-    if (priceInCents + negativeSum <= 0) {
-      return toast.error(
-        `Price would go negative with current adjustments. The lowest possible price is Rs.${((priceInCents + negativeSum) / 100).toFixed(2)}. Increase base price or reduce discounts.`
-      );
+    if (!asDraft) {
+      // ✅ full validation for publishing
+      if (uploadedImages.length === 0) return toast.error("Please add at least one product image.");
+      if (!categoryId) return toast.message("Please select or create a category first!");
+      if (!description.trim()) return toast.error("A product description is required.");
+      if (isNaN(priceInCents) || priceInCents <= 0) {
+        return toast.error("Please enter a valid base price.");
+      }
+      const negativeSum = features
+        .filter((f) => f.priceAdjustment !== undefined && f.priceAdjustment < 0)
+        .reduce((sum, f) => sum + (f.priceAdjustment ?? 0), 0);
+      if (priceInCents + negativeSum <= 0) {
+        return toast.error(
+          `Price would go negative with current adjustments. The lowest possible price is Rs.${((priceInCents + negativeSum) / 100).toFixed(2)}. Increase base price or reduce discounts.`
+        );
+      }
+    } else {
+      // 📝 draft only needs *something* worth saving
+      if (!title.trim() && !description.trim() && uploadedImages.length === 0) {
+        return toast.error("Add at least a title, description, or image before saving a draft.");
+      }
     }
 
     setLoading(true);
 
     try {
       await createProduct({
-        title,
-        slug,
-        description,
-        price: priceInCents,
-        inventoryCount: Number(inventoryCount),
-        categoryId: categoryId as any,
+        title: title.trim() || undefined,          // undefined lets the mutation apply draft placeholders
+        slug: slug || undefined,
+        description: description.trim() || undefined,
+        price: priceInCents > 0 ? priceInCents : undefined,
+        inventoryCount: Number(inventoryCount) || 0,
+        categoryId: (categoryId || undefined) as Id<"categories"> | undefined,
         images: uploadedImages,
         video: (uploadedVideoUrl || videoUrl).trim() || undefined,
-        features, 
-        isActive: true,
-        model3d: uploadedModelUrl || undefined,
+        features,
+        asDraft,                                   // 👈 the flag your new mutation reads
       });
 
-      toast.success("Product successfully created!");
+      toast.success(asDraft ? "Draft saved 📝" : "Product successfully created!");
       router.push("/admin");
     } catch (error: any) {
-      // 👇 NEW: Check the error message for duplicate indicators
       const errorMessage = error?.message?.toLowerCase() || String(error).toLowerCase();
-      
       if (
-        errorMessage.includes("duplicate") || 
-        errorMessage.includes("already exists") || 
-        errorMessage.includes("slug") || 
+        errorMessage.includes("duplicate") ||
+        errorMessage.includes("already exists") ||
+        errorMessage.includes("slug") ||
         errorMessage.includes("title") ||
         errorMessage.includes("unique constraint")
       ) {
@@ -405,6 +410,11 @@ export default function NewProductPage() {
     }
   };
 
+  // Form submit = publish (your <form onSubmit> keeps working unchanged)
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveProduct(false);
+  };
   const glow = (field: string) => (recentlyFilled.includes(field) ? "ai-glow" : "");
 
   return (
@@ -761,6 +771,16 @@ export default function NewProductPage() {
           >
             Cancel
           </Link>
+          {allowDrafts && (
+            <button
+              type="button"
+              onClick={() => saveProduct(true)}
+              disabled={loading || uploading}
+              className="px-4 py-3 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+            >
+              Save as Draft
+            </button>
+          )}
           <button
             type="submit"
             disabled={loading || uploading}
