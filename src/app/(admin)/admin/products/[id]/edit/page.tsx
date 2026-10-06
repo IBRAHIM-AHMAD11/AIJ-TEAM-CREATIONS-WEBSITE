@@ -74,7 +74,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     setDescription(product.description);
     setPriceInput((product.price / 100).toFixed(2));
     setInventoryCount(product.inventoryCount);
-    setCategoryId(product.categoryId);
+    setCategoryId(product.categoryId ?? "");
     setUploadedImages(product.images || []);
     setFeatures(product.features || []);
     setIsActive(product.isActive);
