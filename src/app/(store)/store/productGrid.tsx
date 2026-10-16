@@ -40,20 +40,33 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
 
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  // Keep latest values in refs so the observer callback never goes stale
+  const onLoadMoreRef = useRef(onLoadMore);
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  useEffect(() => {
+    onLoadMoreRef.current = onLoadMore;
+    isLoadingMoreRef.current = isLoadingMore;
+  }, [onLoadMore, isLoadingMore]);
+
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel || !canLoadMore) return;
+
+    // Prefetch zone: start the next batch when the sentinel is within
+    // ~2 screen-heights of the viewport, so it lands before the user does.
+    const prefetchMargin = Math.max(800, Math.round(window.innerHeight * 2));
+
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && canLoadMore && !isLoadingMore) {
-          onLoadMore();
+        if (entry.isIntersecting && !isLoadingMoreRef.current) {
+          onLoadMoreRef.current();
         }
       },
-      { rootMargin: "200px" }
+      { rootMargin: `${prefetchMargin}px 0px` }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [canLoadMore, isLoadingMore, onLoadMore]);
+  }, [canLoadMore, isLoadingMore]);
 
   const filteredProducts = allProducts
     .filter((product) => {
@@ -120,8 +133,9 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
           <motion.div
             key={product._id}
             initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06, duration: 0.4 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ delay: (i % 4) * 0.06, duration: 0.4 }}
             layout
             className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow bg-white flex flex-col justify-between"
           >

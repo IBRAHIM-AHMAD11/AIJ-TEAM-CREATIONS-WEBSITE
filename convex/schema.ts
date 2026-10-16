@@ -28,9 +28,8 @@ const schema = defineSchema({
     price: v.number(),
     inventoryCount: v.number(),
     categoryId: v.optional(v.id("categories")),
-    status: v.optional(v.string()),
     images: v.array(v.string()),
-    isActive: v.boolean(),
+    status: v.union(v.literal("draft"), v.literal("published")), // required, typed
     createdAt: v.number(),
     video: v.optional(v.string()),
     model3d: v.optional(v.string()),
@@ -55,7 +54,7 @@ const schema = defineSchema({
   })
     .index("by_slug", ["slug"])
     .index("by_category", ["categoryId"])
-    .index("by_status", ["isActive"]),
+    .index("by_status", ["status"]),
 
   categories: defineTable({
     name: v.string(),

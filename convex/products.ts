@@ -11,7 +11,7 @@ export const get = query({
     // Uses the "by_status" index to only grab active products
     return await ctx.db
       .query("products")
-      .withIndex("by_status", (q) => q.eq("isActive", true))
+      .withIndex("by_status", (q) => q.eq("status", "published"))
       .collect();
   },
 });
@@ -80,9 +80,8 @@ export const createProduct = mutation({
       images,
       video: args.video,
       features: args.features ?? [],
-      isActive: isDraft ? false : (args.isActive ?? true),
-      model3d: args.model3d,
       status: isDraft ? "draft" : "published",
+      model3d: args.model3d,
       createdAt: Date.now(),
     });
   },
@@ -219,8 +218,7 @@ export const updateProduct = mutation({
       video: args.video !== undefined ? args.video : existing.video,
       model3d: args.model3d !== undefined ? args.model3d : existing.model3d,
       features,
-      isActive: isDraft ? false : (args.isActive ?? existing.isActive ?? true),
-      status: isDraft ? "draft" : "published",
+      status: isDraft ? "draft" : (existing.status ?? "published"),
     });
   },
 });
@@ -244,7 +242,7 @@ export const getPaginated = query({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("products")
-      .withIndex("by_status", (q) => q.eq("isActive", true))
+      .withIndex("by_status", (q) => q.eq("status", "published"))
       .order("desc")
       .paginate(args.paginationOpts);
   },
@@ -255,7 +253,7 @@ export const getByCategory = query({
   handler: async (ctx, args) => {
     const products = await ctx.db
       .query("products")
-      .withIndex("by_status", (q) => q.eq("isActive", true))
+      .withIndex("by_status", (q) => q.eq("status", "published"))
       .collect();
     return products.filter((p) => p.categoryId === args.categoryId && p._id !== args.excludeId).slice(0, 4);
   },
