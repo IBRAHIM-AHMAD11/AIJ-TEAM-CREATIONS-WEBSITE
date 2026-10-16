@@ -91,7 +91,9 @@ export default function ProductPage({ params }: ProductPageProps) {
 
   const similarProducts = useQuery(
     api.products.getByCategory,
-    product ? { categoryId: product.categoryId, excludeId: product._id } : "skip"
+    product?.categoryId
+      ? { categoryId: product.categoryId, excludeId: product._id }
+      : "skip"
   );
 
   const effectivePrice = computeEffectivePrice(product, selectedColor, selectedSize, selectedDimension, selectedFinish);
