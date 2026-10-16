@@ -59,7 +59,8 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
     .filter((product) => {
       const matchesCategory =
         selectedCategories.length === 0 ||
-        selectedCategories.includes(product.categoryId);
+        (product.categoryId !== undefined &&
+          selectedCategories.includes(product.categoryId));
       const matchesStock = !stockOnly || product.inventoryCount > 0;
       const matchesSearch = !q || product.title.toLowerCase().includes(q) || product.description.toLowerCase().includes(q);
       return matchesCategory && matchesStock && matchesSearch;
