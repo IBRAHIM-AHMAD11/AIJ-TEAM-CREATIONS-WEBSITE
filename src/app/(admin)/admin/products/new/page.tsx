@@ -353,7 +353,7 @@ export default function NewProductPage() {
 
     if (!asDraft) {
       // ✅ full validation for publishing
-      if (uploadedImages.length === 0) return toast.error("Please add at least one product image.");
+      // if (uploadedImages.length === 0) return toast.error("Please add at least one product image.");
       if (!categoryId) return toast.message("Please select or create a category first!");
       if (!description.trim()) return toast.error("A product description is required.");
       if (isNaN(priceInCents) || priceInCents <= 0) {

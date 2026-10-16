@@ -342,7 +342,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     const priceInCents = priceInput ? Math.round(parseFloat(priceInput) * 100) : 0;
 
     if (!asDraft) {
-      if (uploadedImages.length === 0) return toast.error("Please add at least one product image.");
+      // if (uploadedImages.length === 0) return toast.error("Please add at least one product image.");
       if (!categoryId) return toast.error("Please select a category!");
       if (!description.trim()) return toast.error("A product description is required.");
       if (isNaN(priceInCents) || priceInCents <= 0) return toast.error("Please enter a valid base price.");
