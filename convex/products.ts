@@ -159,6 +159,7 @@ export const updateProduct = mutation({
     isActive: v.optional(v.boolean()),
     video: v.optional(v.string()),
     model3d: v.optional(v.string()),
+    asDraft: v.optional(v.boolean()),
     features: v.optional(
       v.array(
         v.object({
@@ -171,7 +172,7 @@ export const updateProduct = mutation({
         })
       )
     ),
-    asDraft: v.optional(v.boolean()),
+    status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   },
   handler: async (ctx, args) => {
     // same auth pattern you just put in createProduct
@@ -201,7 +202,12 @@ export const updateProduct = mutation({
     }
     // saving a COMPLETE product publishes it; incomplete only stays draft if drafts are allowed
     const isDraft = allowDrafts && (args.asDraft === true || !complete);
-
+    const finalStatus =
+      args.status !== undefined
+        ? args.status                                  // explicit — the edit modal's selector
+        : isDraft
+          ? "draft"                                    // auto-draft (incomplete or asDraft flag)
+          : (existing.status ?? "published");  
     const slug = args.slug?.trim() || existing.slug;
 
     // 👉 if your original updateProduct had a duplicate title/slug check, re-add it here
@@ -218,7 +224,7 @@ export const updateProduct = mutation({
       video: args.video !== undefined ? args.video : existing.video,
       model3d: args.model3d !== undefined ? args.model3d : existing.model3d,
       features,
-      status: isDraft ? "draft" : (existing.status ?? "published"),
+      status: finalStatus,
     });
   },
 });

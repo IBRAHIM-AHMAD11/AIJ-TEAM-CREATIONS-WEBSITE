@@ -2,9 +2,8 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../../convex/_generated/api";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { use } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { AIAssistant, type AIUpdate } from "../../../AIAssistant";
@@ -47,7 +46,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [videoUrl, setVideoUrl] = useState("");
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState("");
   const [features, setFeatures] = useState<ProductFeature[]>([]);
-  const [isActive, setIsActive] = useState(true);
+  const [status, setStatus] = useState<"draft" | "published">("draft");
 
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -61,7 +60,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
 
-  const [showAI, setShowAI] = useState(false); // suggest false here — edit = tweaking, the ✨ pill is enough. true works too if you prefer.
+  const [showAI, setShowAI] = useState(false); // edit = tweaking, the ✨ pill is enough
   const [recentlyFilled, setRecentlyFilled] = useState<string[]>([]);
   const hydratedForRef = useRef<string | null>(null);
 
@@ -77,7 +76,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     setCategoryId(product.categoryId ?? "");
     setUploadedImages(product.images || []);
     setFeatures(product.features || []);
-    setIsActive(product.isActive);
+    setStatus(product.status); // ✅ status is now "draft" | "published" — no truthy check!
 
     if (product.video) {
       if (isConvexStorageUrl(product.video)) {
@@ -337,11 +336,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     }, 0);
   };
 
-  const saveProduct = async (asDraft: boolean) => {
+  const saveProduct = async (overrideStatus?: "draft" | "published") => {
     if (!product) return;
+
+    const finalStatus = overrideStatus ?? status;
     const priceInCents = priceInput ? Math.round(parseFloat(priceInput) * 100) : 0;
 
-    if (!asDraft) {
+    if (finalStatus === "published") {
       // if (uploadedImages.length === 0) return toast.error("Please add at least one product image.");
       if (!categoryId) return toast.error("Please select a category!");
       if (!description.trim()) return toast.error("A product description is required.");
@@ -362,19 +363,19 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         images: uploadedImages,
         video: (uploadedVideoUrl || videoUrl).trim() || undefined,
         features,
-        isActive,
-        asDraft,
+        status: finalStatus, // ✅ the only status field sent — no asDraft
       });
-      toast.success(asDraft ? "Draft updated 📝" : "Product updated successfully!");
+      toast.success(finalStatus === "draft" ? "Draft updated 📝" : "Product updated successfully!");
       router.push("/admin");
     } catch (error: any) {
-      // ...your existing duplicate-error catch block unchanged
+      // TODO: restore your duplicate-slug/title error handling here
+      toast.error(error?.data?.message ?? "Failed to update product.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); saveProduct(false); };
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); saveProduct(); };
 
   return (
     <div className="max-w-3xl mx-auto bg-white p-8 rounded-xl border border-gray-100 shadow-sm space-y-8 relative">
@@ -519,10 +520,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
-        {/* Price, Stock, Active */}
+        {/* Price, Stock, Status */}
         <div className="grid grid-cols-3 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Price (Rs. RUPEES)</label>
+            <label className="block text-sm font-medium text-gray-700">Price (Rs.)</label>
             <input
               required
               type="number"
@@ -542,16 +543,20 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               onChange={(e) => setInventoryCount(Number(e.target.value))}
             />
           </div>
-          <div className="flex items-end pb-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-gray-700">Active</span>
-            </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as "draft" | "published")}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white"
+            >
+              {allowDrafts ? (
+                <option value="draft">Draft (hidden)</option>
+              ) : (
+                <option value="draft" disabled>Draft (disabled)</option>
+              )}
+              <option value="published">Published (visible)</option>
+            </select>
           </div>
         </div>
 
@@ -693,6 +698,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
+        {/* Submit */}
         <div className="flex justify-end gap-3 pt-2">
           <Link
             href="/admin"
@@ -703,7 +709,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           {allowDrafts && (
             <button
               type="button"
-              onClick={() => saveProduct(true)}
+              onClick={() => saveProduct("draft")}
               disabled={loading || uploading}
               className="px-4 py-3 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
             >
@@ -749,15 +755,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           <div className="bg-white rounded-xl p-6 max-w-4xl w-full h-[85vh] flex flex-col shadow-2xl border border-gray-200">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-900">Product Description</h3>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowDescriptionModal(false)}
                 className="text-gray-400 hover:text-gray-700 transition font-bold text-xl"
               >
                 ×
               </button>
             </div>
-            
+
             {/* Toolbar */}
             <div className="flex flex-wrap gap-2 mb-3 pb-3 border-b border-gray-100">
               <button type="button" onClick={() => insertMarkdown("**", "**")} className="px-3 py-1.5 text-sm font-semibold bg-gray-100 hover:bg-gray-200 rounded text-gray-700">Bold</button>
@@ -778,9 +784,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             />
 
             <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
-              <button 
-                type="button" 
-                onClick={() => setShowDescriptionModal(false)} 
+              <button
+                type="button"
+                onClick={() => setShowDescriptionModal(false)}
                 className="px-6 py-2 bg-slate-900 text-white font-medium rounded-md hover:bg-black transition"
               >
                 Done
@@ -798,6 +804,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           basePriceDollars={priceInput}
         />
       )}
+
       {/* ✨ AI Assistant */}
       <AIAssistant
         open={showAI}

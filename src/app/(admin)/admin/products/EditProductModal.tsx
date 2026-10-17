@@ -30,9 +30,9 @@ interface EditProductModalProps {
     description: string;
     price: number;
     inventoryCount: number;
-    categoryId: string;
+    categoryId?: string;              // ← optional — matches schema (and your old categoryId bug)
     images: string[];
-    isActive: boolean;
+    status: "draft" | "published";    // ← replaces isActive: boolean
     video?: string;
     features?: ProductFeature[];
   } | null;
@@ -58,7 +58,7 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
   const [videoUrl, setVideoUrl] = useState("");
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState("");
   const [features, setFeatures] = useState<ProductFeature[]>([]);
-  const [isActive, setIsActive] = useState(true);
+  const [status, setStatus] = useState<"draft" | "published">("draft");
 
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -78,10 +78,10 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
     setDescription(product.description);
     setPriceInput((product.price / 100).toFixed(2));
     setInventoryCount(product.inventoryCount);
-    setCategoryId(product.categoryId);
+    setCategoryId(product.categoryId ?? "");
+    setStatus(product.status);
     setUploadedImages(product.images || []);
     setFeatures(product.features || []);
-    setIsActive(product.isActive);
 
     if (product.video) {
       if (isConvexStorageUrl(product.video)) {
@@ -239,7 +239,7 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
         images: uploadedImages,
         video: (uploadedVideoUrl || videoUrl).trim() || undefined,
         features,
-        isActive,
+        status,          // ← replaces isActive,
       });
 
       toast.success("Product updated successfully!");
@@ -400,16 +400,19 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
             </div>
           </div>
 
-          {/* Active toggle */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="isActive"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <label htmlFor="isActive" className="text-sm font-medium text-gray-700">Active (visible on storefront)</label>
+          {/* Status */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status <span className="text-xs text-gray-400 font-normal">(draft = hidden from storefront)</span>
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as "draft" | "published")}
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 bg-white"
+            >
+              <option value="draft">Draft (hidden)</option>
+              <option value="published">Published (visible)</option>
+            </select>
           </div>
 
           {/* Images */}
