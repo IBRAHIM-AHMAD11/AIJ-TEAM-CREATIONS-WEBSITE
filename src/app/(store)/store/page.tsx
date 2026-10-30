@@ -20,9 +20,9 @@ const Home = () => {
     {},
     { initialNumItems: pageSize }
   );
-  useEffect(() => {
-    console.log("[pagination]", status, "| items:", results.length);
-  }, [status, results.length]);
+  // useEffect(() => {
+  //   console.log("[pagination]", status, "| items:", results.length);
+  // }, [status, results.length]);
   const { recentlyViewedIds } = useRecentlyViewed();
   const recentlyViewedProducts = useQuery(
     api.products.getByIds,
