@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Doc } from "../../../../convex/_generated/dataModel";
 import { useAtomValue, useSetAtom, useAtom } from "jotai";
 import Link from "next/link";
@@ -38,7 +38,7 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
   const allProducts = products ?? [];
   const q = (searchQueryProp ?? "").toLowerCase().trim();
 
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [sentinelRef, setSentinelRef] = useState<HTMLDivElement | null>(null);
 
   // Keep latest values in refs so the observer callback never goes stale
   const onLoadMoreRef = useRef(onLoadMore);
@@ -51,8 +51,7 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
   }, [onLoadMore, isLoadingMore, canLoadMore]); // 👈 NEW deps
 
   useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel || !canLoadMore) return;
+    if (!sentinelRef || !canLoadMore) return;
 
     // Prefetch zone: start the next batch when the sentinel is within
     // ~2 screen-heights of the viewport, so it lands before the user does.
@@ -66,9 +65,9 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
       },
       { rootMargin: `${prefetchMargin}px 0px` }
     );
-    observer.observe(sentinel);
+    observer.observe(sentinelRef);
     return () => observer.disconnect();
-  }, [canLoadMore, isLoadingMore]);
+  }, [sentinelRef, canLoadMore, isLoadingMore]); // 👈 sentinelRef is now a dep
 
   // 👇 NEW: velocity-aware prefetch — covers fast flick-scrolling that can
   // outrun the sentinel's prefetch zone. If the user would hit the bottom
@@ -258,7 +257,7 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
         </div>
       )}
 
-      {canLoadMore && <div ref={sentinelRef} className="h-4" />}
+      {canLoadMore && <div ref={setSentinelRef} className="h-4" />}
     </div>
   );
 }
