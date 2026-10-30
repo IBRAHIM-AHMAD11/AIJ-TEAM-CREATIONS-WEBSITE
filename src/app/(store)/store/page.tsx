@@ -8,17 +8,21 @@ import Breadcrumbs from "@/components/ui/breadcrumbs";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import RecentlyViewed from "./recentlyViewed";
 import { useGridPageSize } from "@/hooks/useGridPageSize";
+import { useEffect } from "react";
 
 const Home = () => {
 
   const pageSize = useGridPageSize(2); // 2 screens of buffer
+  
 
   const { results, status, loadMore } = usePaginatedQuery(
     api.products.getPaginated,
     {},
     { initialNumItems: pageSize }
   );
-
+  useEffect(() => {
+    console.log("[pagination]", status, "| items:", results.length);
+  }, [status, results.length]);
   const { recentlyViewedIds } = useRecentlyViewed();
   const recentlyViewedProducts = useQuery(
     api.products.getByIds,
