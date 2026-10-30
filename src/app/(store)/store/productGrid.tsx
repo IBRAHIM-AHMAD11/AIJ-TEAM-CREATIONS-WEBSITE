@@ -43,10 +43,12 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
   // Keep latest values in refs so the observer callback never goes stale
   const onLoadMoreRef = useRef(onLoadMore);
   const isLoadingMoreRef = useRef(isLoadingMore);
+  const canLoadMoreRef = useRef(canLoadMore); // 👈 NEW
   useEffect(() => {
     onLoadMoreRef.current = onLoadMore;
     isLoadingMoreRef.current = isLoadingMore;
-  }, [onLoadMore, isLoadingMore]);
+    canLoadMoreRef.current = canLoadMore; // 👈 NEW
+  }, [onLoadMore, isLoadingMore, canLoadMore]); // 👈 NEW deps
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -67,6 +69,31 @@ export default function ProductGrid({ products, isLoading, isLoadingMore, canLoa
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [canLoadMore, isLoadingMore]);
+
+  // 👇 NEW: velocity-aware prefetch — covers fast flick-scrolling that can
+  // outrun the sentinel's prefetch zone. If the user would hit the bottom
+  // in <1.5s at their current speed, grab the next batch immediately.
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let lastT = performance.now();
+
+    const onScroll = () => {
+      const now = performance.now();
+      const y = window.scrollY;
+      const dt = (now - lastT) / 1000;
+      const v = dt > 0 ? (y - lastY) / dt : 0; // px/sec, positive = scrolling down
+      lastY = y;
+      lastT = now;
+
+      if (v <= 0 || !canLoadMoreRef.current || isLoadingMoreRef.current) return;
+
+      const distance = document.documentElement.scrollHeight - y - window.innerHeight;
+      if (distance / v < 1.5) onLoadMoreRef.current(); // landing in <1.5s → fetch NOW
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const filteredProducts = allProducts
     .filter((product) => {

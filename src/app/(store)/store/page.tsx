@@ -7,13 +7,16 @@ import ProductGrid from "@/app/(store)/store/productGrid";
 import Breadcrumbs from "@/components/ui/breadcrumbs";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import RecentlyViewed from "./recentlyViewed";
+import { useGridPageSize } from "@/hooks/useGridPageSize";
 
 const Home = () => {
+
+  const pageSize = useGridPageSize(2); // 2 screens of buffer
 
   const { results, status, loadMore } = usePaginatedQuery(
     api.products.getPaginated,
     {},
-    { initialNumItems: 12 }
+    { initialNumItems: pageSize }
   );
 
   const { recentlyViewedIds } = useRecentlyViewed();
@@ -30,7 +33,7 @@ const Home = () => {
         isLoading={status === "LoadingFirstPage"}
         isLoadingMore={status === "LoadingMore"}
         canLoadMore={status !== "Exhausted"}
-        onLoadMore={() => loadMore(12)}
+        onLoadMore={() => loadMore(pageSize)}
       />
       <RecentlyViewed products={recentlyViewedProducts ?? []} />
     </div>
