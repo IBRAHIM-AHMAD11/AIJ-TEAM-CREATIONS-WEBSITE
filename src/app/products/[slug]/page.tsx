@@ -285,7 +285,7 @@ export default function ProductPage({ params }: ProductPageProps) {
                 const cents = (displayPrice % 100).toString().padStart(2, "0");
                 return (
                   <div className="flex items-baseline gap-0.5">
-                    <span className="text-lg font-light text-foreground/80 align-super">$</span>
+                    <span className="text-lg font-light text-foreground/80 align-super">Rs. </span>
                     <span className="text-4xl font-semibold tracking-tight text-foreground">{dollars}</span>
                     <span className="text-lg font-light text-foreground/80 align-super">.{cents}</span>
                     {hasPricedFeatures && hasNoSelection && (
@@ -299,19 +299,19 @@ export default function ProductPage({ params }: ProductPageProps) {
                   Base ${(product.price / 100).toFixed(2)}
                   {selectedColor && (() => {
                     const f = product.features?.find(fe => fe.type === "color" && fe.label === selectedColor);
-                    return f?.priceAdjustment ? ` + color (${f.label}) $${(f.priceAdjustment / 100).toFixed(2)}` : "";
+                    return f?.priceAdjustment ? ` + color (${f.label}) Rs. ${(f.priceAdjustment / 100).toFixed(2)}` : "";
                   })()}
                   {selectedSize && (() => {
                     const f = product.features?.find(fe => fe.type === "size" && fe.value === selectedSize);
-                    return f?.priceAdjustment ? ` + size (${f.value}) $${(f.priceAdjustment / 100).toFixed(2)}` : "";
+                    return f?.priceAdjustment ? ` + size (${f.value}) Rs. ${(f.priceAdjustment / 100).toFixed(2)}` : "";
                   })()}
                   {selectedDimension && (() => {
                     const f = product.features?.find(fe => fe.type === "dimension" && fe.value === selectedDimension);
-                    return f?.priceAdjustment ? ` + dimensions $${(f.priceAdjustment / 100).toFixed(2)}` : "";
+                    return f?.priceAdjustment ? ` + dimensions Rs. ${(f.priceAdjustment / 100).toFixed(2)}` : "";
                   })()}
                   {selectedFinish && (() => {
                     const f = product.features?.find(fe => fe.type === "finish" && fe.value === selectedFinish);
-                    return f?.priceAdjustment ? ` + finish (${f.value}) $${(f.priceAdjustment / 100).toFixed(2)}` : "";
+                    return f?.priceAdjustment ? ` + finish (${f.value}) Rs. ${(f.priceAdjustment / 100).toFixed(2)}` : "";
                   })()}
                 </p>
               )}

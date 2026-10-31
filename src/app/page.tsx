@@ -29,28 +29,28 @@ const PIECES: Piece[] = [
   {
     id: "honeyglass",
     name: "Honeyglass Coasters",
-    price: "$34",
+    price: "Rs.350",
     gradient:
       "radial-gradient(130% 130% at 30% 70%, #ffe9a8 0%, #f7c948 35%, #a85d10 75%, #1a1200 100%)",
   },
   {
     id: "amber-vein",
     name: "Amber Vein Tray",
-    price: "$64",
+    price: "Rs.640",
     gradient:
       "conic-gradient(from 210deg at 50% 50%, #f5c518, #a85d10, #e8951f, #ffe9a8, #f5c518)",
   },
   {
     id: "sunwell",
     name: "Sunwell Catchall",
-    price: "$28",
+    price: "Rs.280",
     gradient:
       "radial-gradient(120% 140% at 70% 25%, #fff3cf 0%, #f7c948 40%, #7a4a0c 80%, #150f02 100%)",
   },
   {
     id: "goldpour",
     name: "Goldpour Coaster Set",
-    price: "$38",
+    price: "Rs.380",
     gradient:
       "radial-gradient(120% 120% at 25% 20%, #f5c518 0%, #e8951f 45%, #4a2c06 85%, #150f02 100%)",
   },
